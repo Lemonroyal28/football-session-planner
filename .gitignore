@@ -1,0 +1,37 @@
+# Dependencies
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Build output
+dist/
+build/
+*.js
+*.d.ts
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Runtime
+.claude-flow/
+.swarm/
+*.db
+*.log
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Temporary
+.tmp/
+tmp/
+*.tmp

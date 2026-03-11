@@ -1,0 +1,31 @@
+{
+  "name": "football-session-planner",
+  "version": "0.1.0",
+  "description": "AI-powered football training session planner using Ruflo v3.5 framework",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest",
+    "dev": "npx claude-flow@v3alpha daemon start",
+    "start": "npx claude-flow@v3alpha agent spawn -t coder",
+    "memory:init": "npx claude-flow@v3alpha memory init",
+    "memory:list": "npx claude-flow@v3alpha memory list",
+    "memory:search": "npx claude-flow@v3alpha memory search --query",
+    "daemon:status": "npx claude-flow@v3alpha daemon status",
+    "swarm:init": "npx claude-flow@v3alpha swarm init --topology hierarchical --max-agents 8",
+    "session:plan": "npx claude-flow@v3alpha agent spawn -t session-planner",
+    "squad:analyze": "npx claude-flow@v3alpha agent spawn -t squad-analyzer",
+    "tactics:gen": "npx claude-flow@v3alpha agent spawn -t tactics-generator"
+  },
+  "dependencies": {
+    "@claude-flow/cli": "^3.5.15",
+    "@claude-flow/memory": "^3.0.0-alpha.11",
+    "@claude-flow/swarm": "^3.0.0-alpha.6",
+    "@claude-flow/neural": "^3.0.0-alpha.7",
+    "@claude-flow/security": "^3.0.0-alpha.x"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "vitest": "^1.0.0"
+  }
+}
