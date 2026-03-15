@@ -15,7 +15,9 @@
     "swarm:init": "npx claude-flow@v3alpha swarm init --topology hierarchical --max-agents 8",
     "session:plan": "npx claude-flow@v3alpha agent spawn -t session-planner",
     "squad:analyze": "npx claude-flow@v3alpha agent spawn -t squad-analyzer",
-    "tactics:gen": "npx claude-flow@v3alpha agent spawn -t tactics-generator"
+    "tactics:gen": "npx claude-flow@v3alpha agent spawn -t tactics-generator",
+    "web:dev": "npm --prefix src/web run dev",
+    "web:build": "npm --prefix src/web run build"
   },
   "dependencies": {
     "@claude-flow/cli": "^3.5.15",
