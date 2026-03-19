@@ -24,7 +24,7 @@
     "@claude-flow/memory": "^3.0.0-alpha.11",
     "@claude-flow/swarm": "^3.0.0-alpha.6",
     "@claude-flow/neural": "^3.0.0-alpha.7",
-    "@claude-flow/security": "^3.0.0-alpha.x"
+    "@claude-flow/security": "^3.0.0-alpha.1"
   },
   "devDependencies": {
     "typescript": "^5.0.0",
