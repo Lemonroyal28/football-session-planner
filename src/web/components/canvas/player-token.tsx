@@ -79,27 +79,18 @@ export function PlayerToken({ player, hasBall, onMouseDown, onClick, onDoubleCli
           {player.name.slice(0, 8)}
         </text>
       )}
-      {/* Ball indicator */}
-      {hasBall && (
-        <g style={{ pointerEvents: 'none' }}>
-          <circle
-            cx={player.x + 14}
-            cy={player.y - 14}
-            r={6}
-            fill="#ffffff"
-            stroke="#333333"
-            strokeWidth={1}
-          />
-          {/* Pentagon pattern hint */}
-          <circle
-            cx={player.x + 14}
-            cy={player.y - 14}
-            r={3}
-            fill="none"
-            stroke="#333333"
-            strokeWidth={0.5}
-          />
-        </g>
+      {/* Highlight ring when player has the ball */}
+      {hasBall && !isMannequin && (
+        <circle
+          cx={player.x}
+          cy={player.y}
+          r={22}
+          fill="none"
+          stroke="#facc15"
+          strokeWidth={2.5}
+          strokeDasharray="4 3"
+          style={{ pointerEvents: 'none' }}
+        />
       )}
     </g>
   );

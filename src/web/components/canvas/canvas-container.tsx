@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import type { ActiveTool } from '../../../types/tools';
 import type {
   ArrowStyle,
@@ -28,6 +28,7 @@ import { ArrowPreview } from './arrow-preview';
 import { ZonePreview } from './zone-preview';
 import { PlayerLayer } from './player-layer';
 import { AnimationOverlay } from './animation-overlay';
+import { BallElement } from './ball-element';
 import { useDrag } from '../../hooks/use-drag';
 import { useArrowDraw } from '../../hooks/use-arrow-draw';
 import { useZoneDraw } from '../../hooks/use-zone-draw';
@@ -72,6 +73,40 @@ export function CanvasContainer({
   animState,
 }: CanvasContainerProps) {
 
+  // Ball drag (free ball only)
+  const [ballDragging, setBallDragging] = useState<{ offsetX: number; offsetY: number } | null>(null);
+
+  const handleBallMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      if (state.ball.ownerId || activeTool !== 'select') return;
+      e.stopPropagation();
+      const svg = svgRef.current;
+      if (!svg) return;
+      const pt = clientToSVG(e.nativeEvent, svg);
+      setBallDragging({ offsetX: pt.x - state.ball.x, offsetY: pt.y - state.ball.y });
+    },
+    [svgRef, state.ball, activeTool]
+  );
+
+  const handleBallDragMove = useCallback(
+    (e: React.MouseEvent) => {
+      if (!ballDragging) return;
+      const svg = svgRef.current;
+      if (!svg) return;
+      const pt = clientToSVG(e.nativeEvent, svg);
+      const clamped = clampToPitch(pt.x - ballDragging.offsetX, pt.y - ballDragging.offsetY);
+      onStateChange({ ...state, ball: { ...state.ball, x: clamped.x, y: clamped.y } });
+    },
+    [ballDragging, svgRef, state, onStateChange]
+  );
+
+  const handleBallDragUp = useCallback(() => {
+    if (ballDragging) {
+      setBallDragging(null);
+      onHistoryPush(state);
+    }
+  }, [ballDragging, state, onHistoryPush]);
+
   // Player drag
   const setPlayers = useCallback(
     (fn: (prev: CanvasPlayer[]) => CanvasPlayer[]) => {
@@ -106,7 +141,27 @@ export function CanvasContainer({
         }
       }
       const enrichedArrow = { ...arrow, fromPlayerId };
-      const next = { ...state, arrows: [...state.arrows, enrichedArrow] };
+
+      // Auto-transfer ball on pass arrows: move ownership to nearest player at endpoint
+      let nextBall = state.ball;
+      if (arrow.style === 'pass' && fromPlayerId && state.ball.ownerId === fromPlayerId) {
+        let targetPlayerId: string | null = null;
+        let targetDist = 40;
+        for (const p of state.players) {
+          if (p.id === fromPlayerId) continue;
+          const d = Math.hypot(p.x - arrow.x2, p.y - arrow.y2);
+          if (d < targetDist) {
+            targetPlayerId = p.id;
+            targetDist = d;
+          }
+        }
+        if (targetPlayerId) {
+          const target = state.players.find((p) => p.id === targetPlayerId)!;
+          nextBall = { x: target.x, y: target.y, ownerId: targetPlayerId };
+        }
+      }
+
+      const next = { ...state, arrows: [...state.arrows, enrichedArrow], ball: nextBall };
       onStateChange(next);
       onHistoryPush(next);
     },
@@ -180,22 +235,22 @@ export function CanvasContainer({
   const handleSvgMouseMove = useCallback(
     (e: React.MouseEvent<SVGSVGElement>) => {
       if (animState.playing) return;
-      if (activeTool === 'select') dragMouseMove(e);
+      if (activeTool === 'select') { handleBallDragMove(e); dragMouseMove(e); }
       else if (arrowStyle) arrowDraw.handleMouseMove(e);
       else if (activeTool === 'zone') zoneDraw.handleMouseMove(e);
       else if (activeTool === 'draw') scribbleDraw.handleMouseMove(e);
     },
-    [activeTool, arrowStyle, dragMouseMove, arrowDraw, zoneDraw, scribbleDraw, animState.playing]
+    [activeTool, arrowStyle, handleBallDragMove, dragMouseMove, arrowDraw, zoneDraw, scribbleDraw, animState.playing]
   );
 
   const handleSvgMouseUp = useCallback(
     (e: React.MouseEvent<SVGSVGElement>) => {
       if (animState.playing) return;
-      if (activeTool === 'select') dragMouseUp();
+      if (activeTool === 'select') { handleBallDragUp(); dragMouseUp(); }
       else if (activeTool === 'zone') zoneDraw.handleMouseUp(e);
       else if (activeTool === 'draw') scribbleDraw.handleMouseUp();
     },
-    [activeTool, dragMouseUp, zoneDraw, scribbleDraw, animState.playing]
+    [activeTool, handleBallDragUp, dragMouseUp, zoneDraw, scribbleDraw, animState.playing]
   );
 
   const handleSvgMouseDown = useCallback(
@@ -301,7 +356,7 @@ export function CanvasContainer({
     activeTool === 'cone' ? 'copy' :
     activeTool === 'draw' ? 'crosshair' :
     arrowStyle ? 'crosshair' :
-    dragging ? 'grabbing' : 'default';
+    (dragging || ballDragging) ? 'grabbing' : 'default';
 
   const renderPitchMarkings = () => {
     switch (pitchType) {
@@ -343,17 +398,15 @@ export function CanvasContainer({
 
           <ConeLayer cones={state.cones} onConeClick={handleConeClick} />
 
-          {/* Ball — only show free ball when not owned by a player */}
-          {!state.ball.ownerId && (
-            <circle
-              cx={state.ball.x}
-              cy={state.ball.y}
-              r={8}
-              fill="#ffffff"
-              stroke="#333333"
-              strokeWidth={1.5}
-            />
-          )}
+          {/* Ball — always visible */}
+          {(() => {
+            const owner = state.ball.ownerId
+              ? state.players.find((p) => p.id === state.ball.ownerId)
+              : null;
+            const bx = owner ? owner.x + 14 : state.ball.x;
+            const by = owner ? owner.y + 14 : state.ball.y;
+            return <BallElement cx={bx} cy={by} owned={!!owner} onMouseDown={handleBallMouseDown} />;
+          })()}
 
           <PlayerLayer
             players={state.players}

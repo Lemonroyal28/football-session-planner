@@ -16,5 +16,13 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  overflow: hidden;
+}
+
+.ball-glow {
+  animation: ball-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes ball-pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.9; }
 }

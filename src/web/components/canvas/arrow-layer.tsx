@@ -11,8 +11,13 @@ interface ArrowLayerProps {
 export function ArrowLayer({ arrows, onArrowClick }: ArrowLayerProps) {
   return (
     <g className="arrow-layer">
-      {arrows.map((arrow) => (
-        <ArrowElement key={arrow.id} arrow={arrow} onClick={onArrowClick} />
+      {arrows.map((arrow, index) => (
+        <ArrowElement
+          key={arrow.id}
+          arrow={arrow}
+          sequenceNumber={index + 1}
+          onClick={onArrowClick}
+        />
       ))}
     </g>
   );
