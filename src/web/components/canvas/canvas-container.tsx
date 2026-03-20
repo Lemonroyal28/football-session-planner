@@ -126,7 +126,10 @@ export function CanvasContainer({
   const arrowStyle: ArrowStyle | null =
     activeTool === 'arrow-pass' ? 'pass' :
     activeTool === 'arrow-run' ? 'run' :
-    activeTool === 'arrow-dribble' ? 'dribble' : null;
+    activeTool === 'arrow-dribble' ? 'dribble' :
+    activeTool === 'arrow-movement' ? 'movement' :
+    activeTool === 'arrow-pressing' ? 'pressing' :
+    activeTool === 'arrow-overlap' ? 'overlap' : null;
 
   const onArrowCommit = useCallback(
     (arrow: CanvasArrow) => {

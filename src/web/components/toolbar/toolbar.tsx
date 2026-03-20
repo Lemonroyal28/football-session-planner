@@ -14,6 +14,9 @@ import {
   Pencil,
   Play,
   StopCircle,
+  UserRound,
+  Shield,
+  TrendingUp,
 } from 'lucide-react';
 import type { ActiveTool } from '../../../types/tools';
 import { ToolButton } from './tool-button';
@@ -74,6 +77,27 @@ export function Toolbar({
         shortcut="D"
         active={activeTool === 'arrow-dribble'}
         onClick={() => setTool('arrow-dribble')}
+      />
+      <ToolButton
+        icon={<UserRound size={16} />}
+        label="Movement"
+        shortcut="M"
+        active={activeTool === 'arrow-movement'}
+        onClick={() => setTool('arrow-movement')}
+      />
+      <ToolButton
+        icon={<Shield size={16} />}
+        label="Pressing"
+        shortcut="E"
+        active={activeTool === 'arrow-pressing'}
+        onClick={() => setTool('arrow-pressing')}
+      />
+      <ToolButton
+        icon={<TrendingUp size={16} />}
+        label="Overlap"
+        shortcut="O"
+        active={activeTool === 'arrow-overlap'}
+        onClick={() => setTool('arrow-overlap')}
       />
       <ToolButton
         icon={<Square size={16} />}

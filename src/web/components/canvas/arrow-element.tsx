@@ -39,6 +39,7 @@ export function ArrowElement({ arrow, sequenceNumber, onClick }: ArrowElementPro
     </g>
   ) : null;
 
+  // Curved arrows (dribble)
   if (arrow.style === 'dribble') {
     const midX = (arrow.x1 + arrow.x2) / 2 - (arrow.y2 - arrow.y1) * 0.25;
     const midY = (arrow.y1 + arrow.y2) / 2 + (arrow.x2 - arrow.x1) * 0.25;
@@ -59,7 +60,60 @@ export function ArrowElement({ arrow, sequenceNumber, onClick }: ArrowElementPro
     );
   }
 
-  const isDashed = arrow.style === 'run';
+  // Wavy/zigzag arrow (overlap)
+  if (arrow.style === 'overlap') {
+    const dx = arrow.x2 - arrow.x1;
+    const dy = arrow.y2 - arrow.y1;
+    const len = Math.hypot(dx, dy) || 1;
+    const segments = 6;
+    const amplitude = 8;
+
+    let path = `M ${arrow.x1} ${arrow.y1}`;
+    for (let i = 1; i <= segments; i++) {
+      const t = i / segments;
+      const x = arrow.x1 + dx * t;
+      const y = arrow.y1 + dy * t;
+      const offset = i % 2 === 0 ? amplitude : -amplitude;
+      const perpX = -dy / len * offset;
+      const perpY = dx / len * offset;
+      path += ` L ${x + perpX} ${y + perpY}`;
+    }
+
+    return (
+      <g>
+        <path
+          d={path}
+          fill="none"
+          stroke={color}
+          strokeWidth={2}
+          markerEnd={markerId}
+          style={{ cursor: 'pointer' }}
+          onClick={(e) => onClick?.(e, arrow)}
+        />
+        {badge}
+      </g>
+    );
+  }
+
+  // Determine line style based on arrow type
+  let strokeDasharray: string | undefined;
+  let strokeWidth = 2.5;
+
+  switch (arrow.style) {
+    case 'run':
+      strokeDasharray = '8 4'; // Dashed
+      break;
+    case 'movement':
+      strokeDasharray = '2 3'; // Dotted
+      break;
+    case 'pressing':
+      strokeWidth = 3.5; // Thicker solid
+      break;
+    case 'pass':
+    default:
+      strokeDasharray = undefined; // Solid
+      break;
+  }
 
   return (
     <g>
@@ -69,8 +123,8 @@ export function ArrowElement({ arrow, sequenceNumber, onClick }: ArrowElementPro
         x2={arrow.x2}
         y2={arrow.y2}
         stroke={color}
-        strokeWidth={2.5}
-        strokeDasharray={isDashed ? '8 4' : undefined}
+        strokeWidth={strokeWidth}
+        strokeDasharray={strokeDasharray}
         markerEnd={markerId}
         style={{ cursor: 'pointer' }}
         onClick={(e) => onClick?.(e, arrow)}

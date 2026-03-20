@@ -9,7 +9,7 @@ export interface CanvasPlayer {
   name: string;
 }
 
-export type ArrowStyle = 'pass' | 'run' | 'dribble';
+export type ArrowStyle = 'pass' | 'run' | 'dribble' | 'movement' | 'pressing' | 'overlap';
 
 export interface CanvasArrow {
   id: string;
