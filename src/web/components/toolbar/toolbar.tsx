@@ -18,9 +18,12 @@ import {
   Shield,
   TrendingUp,
   Link,
+  Info,
 } from 'lucide-react';
 import type { ActiveTool } from '../../../types/tools';
 import { ToolButton } from './tool-button';
+import { HelpModal } from './help-modal';
+import { useState } from 'react';
 
 interface ToolbarProps {
   activeTool: ActiveTool;
@@ -54,9 +57,12 @@ export function Toolbar({
   onToggleConcurrent,
 }: ToolbarProps) {
   const isArrowTool = activeTool.startsWith('arrow-');
+  const [showHelp, setShowHelp] = useState(false);
 
   return (
-    <div className="flex items-center gap-1 bg-[#1e293b] rounded-lg px-2 py-1 shadow-lg">
+    <>
+      <HelpModal isOpen={showHelp} onClose={() => setShowHelp(false)} />
+      <div className="flex items-center gap-1 bg-[#1e293b] rounded-lg px-2 py-1 shadow-lg">
       <ToolButton
         icon={<MousePointer2 size={16} />}
         label="Select"
@@ -64,6 +70,15 @@ export function Toolbar({
         active={activeTool === 'select'}
         onClick={() => setTool('select')}
       />
+      <ToolButton
+        icon={<Info size={16} />}
+        label="Help"
+        shortcut="?"
+        onClick={() => setShowHelp(true)}
+      />
+
+      <div className="w-px h-6 bg-white/20 mx-1" />
+
       <ToolButton
         icon={<MoveRight size={16} />}
         label="Pass"
@@ -194,5 +209,6 @@ export function Toolbar({
         onClick={onExportPNG}
       />
     </div>
+    </>
   );
 }

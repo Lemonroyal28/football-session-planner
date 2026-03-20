@@ -43,6 +43,7 @@ export function TacticalBoardEditor({ initialSession, onSave, embedded }: Tactic
   const [drawStrokeWidth, setDrawStrokeWidth] = useState(2);
   const [planningMode, setPlanningMode] = useState<PlanningMode>('match');
   const [concurrentMode, setConcurrentMode] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
 
   const {
     session,
@@ -155,6 +156,10 @@ export function TacticalBoardEditor({ initialSession, onSave, embedded }: Tactic
     setConcurrentMode((prev) => !prev);
   }, []);
 
+  const handleOpenHelp = useCallback(() => {
+    setShowHelp(true);
+  }, []);
+
   useKeyboardShortcuts({
     setTool: setActiveTool,
     undo: history.undo,
@@ -163,6 +168,7 @@ export function TacticalBoardEditor({ initialSession, onSave, embedded }: Tactic
     canUndo: history.canUndo,
     canRedo: history.canRedo,
     toggleConcurrent: handleToggleConcurrent,
+    openHelp: handleOpenHelp,
   });
 
   useAutosave(session);

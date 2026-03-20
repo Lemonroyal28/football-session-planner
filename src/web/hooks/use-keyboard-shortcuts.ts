@@ -11,6 +11,7 @@ interface ShortcutHandlers {
   canUndo: boolean;
   canRedo: boolean;
   toggleConcurrent?: () => void;
+  openHelp?: () => void;
 }
 
 export function useKeyboardShortcuts({
@@ -21,6 +22,7 @@ export function useKeyboardShortcuts({
   canUndo,
   canRedo,
   toggleConcurrent,
+  openHelp,
 }: ShortcutHandlers) {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -50,6 +52,10 @@ export function useKeyboardShortcuts({
       if (e.metaKey || e.ctrlKey) return;
 
       switch (e.key.toLowerCase()) {
+        case '?':
+          e.preventDefault();
+          if (openHelp) openHelp();
+          break;
         case 's':
           e.preventDefault();
           setTool('select');
@@ -109,5 +115,5 @@ export function useKeyboardShortcuts({
 
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [setTool, undo, redo, cancelDraw, canUndo, canRedo, toggleConcurrent]);
+  }, [setTool, undo, redo, cancelDraw, canUndo, canRedo, toggleConcurrent, openHelp]);
 }
