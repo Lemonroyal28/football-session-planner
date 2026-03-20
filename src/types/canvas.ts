@@ -21,6 +21,8 @@ export interface CanvasArrow {
   color: string;
   /** Optional: ID of the player this arrow originates from */
   fromPlayerId?: string;
+  /** Optional: Control points for curved/elastic arrows (for dribble paths) */
+  controlPoints?: { x: number; y: number }[];
 }
 
 export interface CanvasZone {
@@ -41,12 +43,24 @@ export interface CanvasBall {
 }
 
 export type ConeColor = '#ff6b00' | '#facc15' | '#3b82f6' | '#ef4444' | '#22c55e' | '#ffffff';
+export type ConeVariant = 'standard' | 'flat' | 'marker';
 
 export interface CanvasCone {
   id: string;
   x: number;
   y: number;
   color: ConeColor;
+  variant?: ConeVariant;
+}
+
+export type GoalVariant = 'mini' | 'medium' | 'full_size';
+
+export interface CanvasGoal {
+  id: string;
+  x: number;
+  y: number;
+  variant: GoalVariant;
+  rotation?: number;
 }
 
 export interface CanvasScribble {
@@ -56,11 +70,25 @@ export interface CanvasScribble {
   strokeWidth: number;
 }
 
+export type AnnotationType = 'text' | 'number';
+
+export interface CanvasAnnotation {
+  id: string;
+  type: AnnotationType;
+  x: number;
+  y: number;
+  text: string;
+  fontSize?: number;
+  color?: string;
+}
+
 export interface ScreenState {
   players: CanvasPlayer[];
   arrows: CanvasArrow[];
   zones: CanvasZone[];
   cones: CanvasCone[];
+  goals: CanvasGoal[];
   scribbles: CanvasScribble[];
+  annotations: CanvasAnnotation[];
   ball: CanvasBall;
 }

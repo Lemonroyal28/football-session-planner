@@ -46,7 +46,9 @@ export function createEmptyScreenState(): ScreenState {
     arrows: [],
     zones: [],
     cones: [],
+    goals: [],
     scribbles: [],
+    annotations: [],
     ball: { x: 525, y: 340, ownerId: null },
   };
 }
@@ -57,7 +59,9 @@ export function createDefaultScreenState(): ScreenState {
     arrows: [],
     zones: [],
     cones: [],
+    goals: [],
     scribbles: [],
+    annotations: [],
     ball: { x: 525, y: 340, ownerId: null },
   };
 }

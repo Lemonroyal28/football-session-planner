@@ -39,11 +39,24 @@ export function ArrowElement({ arrow, sequenceNumber, onClick }: ArrowElementPro
     </g>
   ) : null;
 
-  // Curved arrows (dribble)
+  // Curved arrows (dribble) with elastic control points
   if (arrow.style === 'dribble') {
-    const midX = (arrow.x1 + arrow.x2) / 2 - (arrow.y2 - arrow.y1) * 0.25;
-    const midY = (arrow.y1 + arrow.y2) / 2 + (arrow.x2 - arrow.x1) * 0.25;
-    const d = `M ${arrow.x1} ${arrow.y1} Q ${midX} ${midY} ${arrow.x2} ${arrow.y2}`;
+    let d: string;
+
+    if (arrow.controlPoints && arrow.controlPoints.length > 0) {
+      // Use custom control points for elastic dribble path
+      d = `M ${arrow.x1} ${arrow.y1}`;
+      for (const cp of arrow.controlPoints) {
+        d += ` L ${cp.x} ${cp.y}`;
+      }
+      d += ` L ${arrow.x2} ${arrow.y2}`;
+    } else {
+      // Default curved path
+      const midX = (arrow.x1 + arrow.x2) / 2 - (arrow.y2 - arrow.y1) * 0.25;
+      const midY = (arrow.y1 + arrow.y2) / 2 + (arrow.x2 - arrow.x1) * 0.25;
+      d = `M ${arrow.x1} ${arrow.y1} Q ${midX} ${midY} ${arrow.x2} ${arrow.y2}`;
+    }
+
     return (
       <g>
         <path
