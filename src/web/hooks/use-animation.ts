@@ -21,29 +21,39 @@ const STEP_DURATION_MS = 1200;
 const FRAME_MS = 16;
 
 /**
- * Builds an ordered list of movements from arrows.
- * Each arrow with a `fromPlayerId` moves that player from (x1,y1) to (x2,y2).
- * Arrows without a fromPlayerId animate a ghost dot along the arrow path.
- * If a ball owner is set, arrows from the ball holder are placed first.
+ * Builds an ordered list of movements from arrows, grouped by timing.
+ * Arrows with the same timingGroup execute concurrently.
+ * Each step may contain multiple arrows that execute simultaneously.
  */
 function buildMovementPlan(state: ScreenState): {
   arrow: CanvasArrow;
   playerId: string | null;
-}[] {
+}[][] {
   const steps = state.arrows.map((arrow) => ({
     arrow,
     playerId: arrow.fromPlayerId ?? findNearestPlayer(state.players, arrow.x1, arrow.y1),
   }));
 
-  // Reorder: arrows from the ball holder go first
-  if (state.ball.ownerId) {
-    const ballOwnerId = state.ball.ownerId;
-    const ownerSteps = steps.filter((s) => s.playerId === ballOwnerId);
-    const otherSteps = steps.filter((s) => s.playerId !== ballOwnerId);
-    return [...ownerSteps, ...otherSteps];
+  // Group by timing (concurrent arrows share same group)
+  const groups: Map<number, { arrow: CanvasArrow; playerId: string | null }[]> = new Map();
+  let currentGroup = 0;
+
+  for (const step of steps) {
+    const timingGroup = step.arrow.timingGroup ?? currentGroup;
+
+    if (!groups.has(timingGroup)) {
+      groups.set(timingGroup, []);
+    }
+    groups.get(timingGroup)!.push(step);
+
+    // If this arrow is not concurrent with next, increment group
+    if (!step.arrow.isConcurrent) {
+      currentGroup = timingGroup + 1;
+    }
   }
 
-  return steps;
+  // Convert to array of concurrent step groups
+  return Array.from(groups.values());
 }
 
 function findNearestPlayer(
@@ -156,38 +166,42 @@ export function useAnimation(baseState: ScreenState) {
         return;
       }
 
-      const { arrow, playerId } = plan[stepIdx];
+      // Get the concurrent action group for this step
+      const actionGroup = plan[stepIdx];
       const stepStart = performance.now();
 
-      // The start position is the player's current position (or arrow start)
-      const fromX = playerId && positions[playerId] ? positions[playerId].x : arrow.x1;
-      const fromY = playerId && positions[playerId] ? positions[playerId].y : arrow.y1;
-
-      // For pass arrows, the ball travels along the arrow path
-      // For run/dribble arrows, the player moves (ball stays with holder or at last position)
-      const isPass = arrow.style === 'pass';
+      // Prepare animation data for all concurrent actions
+      const animData = actionGroup.map(({ arrow, playerId }) => {
+        const fromX = playerId && positions[playerId] ? positions[playerId].x : arrow.x1;
+        const fromY = playerId && positions[playerId] ? positions[playerId].y : arrow.y1;
+        const isPass = arrow.style === 'pass';
+        return { arrow, playerId, fromX, fromY, isPass };
+      });
 
       const tick = (now: number) => {
         const elapsed = now - stepStart;
         const t = Math.min(1, elapsed / STEP_DURATION_MS);
 
-        const pos = lerpBezier(fromX, fromY, arrow.x2, arrow.y2, arrow.style, t);
-
         const newPositions = { ...positions };
         let ballPos: { x: number; y: number } | null = null;
 
-        if (isPass) {
-          // Ball travels from arrow start to arrow end
-          ballPos = lerpBezier(arrow.x1, arrow.y1, arrow.x2, arrow.y2, 'pass', t);
-          // Player doesn't move during a pass — the ball does
-        } else {
-          // Player moves along the arrow (run/dribble)
-          if (playerId) {
-            newPositions[playerId] = pos;
-          }
-          // Ball follows the player if they have it
-          if (playerId) {
-            ballPos = pos;
+        // Animate all concurrent actions simultaneously
+        for (const { arrow, playerId, fromX, fromY, isPass } of animData) {
+          const pos = lerpBezier(fromX, fromY, arrow.x2, arrow.y2, arrow.style, t);
+
+          if (isPass) {
+            // Ball travels from arrow start to arrow end
+            ballPos = lerpBezier(arrow.x1, arrow.y1, arrow.x2, arrow.y2, 'pass', t);
+            // Player doesn't move during a pass — the ball does
+          } else {
+            // Player moves along the arrow (run/dribble/movement)
+            if (playerId) {
+              newPositions[playerId] = pos;
+            }
+            // Ball follows the player if they have it
+            if (playerId) {
+              ballPos = pos;
+            }
           }
         }
 
@@ -204,9 +218,11 @@ export function useAnimation(baseState: ScreenState) {
         if (t < 1) {
           rafRef.current = requestAnimationFrame(tick);
         } else {
-          // Commit final position and move to next step
-          if (!isPass && playerId) {
-            positions[playerId] = { x: arrow.x2, y: arrow.y2 };
+          // Commit final positions for all concurrent actions and move to next step
+          for (const { arrow, playerId, isPass } of animData) {
+            if (!isPass && playerId) {
+              positions[playerId] = { x: arrow.x2, y: arrow.y2 };
+            }
           }
           positionsRef.current = { ...positions };
           runStep(stepIdx + 1, { ...positions }, plan);

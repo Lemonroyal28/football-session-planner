@@ -23,6 +23,10 @@ export interface CanvasArrow {
   fromPlayerId?: string;
   /** Optional: Control points for curved/elastic arrows (for dribble paths) */
   controlPoints?: { x: number; y: number }[];
+  /** Optional: Timing group for concurrent actions (arrows with same timing group execute simultaneously) */
+  timingGroup?: number;
+  /** Optional: Whether this action is concurrent with the next action */
+  isConcurrent?: boolean;
 }
 
 export interface CanvasZone {
