@@ -17,6 +17,7 @@ import {
   UserRound,
   Shield,
   TrendingUp,
+  Link,
 } from 'lucide-react';
 import type { ActiveTool } from '../../../types/tools';
 import { ToolButton } from './tool-button';
@@ -33,6 +34,8 @@ interface ToolbarProps {
   onPlay: () => void;
   onStop: () => void;
   hasArrows: boolean;
+  concurrentMode: boolean;
+  onToggleConcurrent: () => void;
 }
 
 export function Toolbar({
@@ -47,7 +50,11 @@ export function Toolbar({
   onPlay,
   onStop,
   hasArrows,
+  concurrentMode,
+  onToggleConcurrent,
 }: ToolbarProps) {
+  const isArrowTool = activeTool.startsWith('arrow-');
+
   return (
     <div className="flex items-center gap-1 bg-[#1e293b] rounded-lg px-2 py-1 shadow-lg">
       <ToolButton
@@ -99,6 +106,22 @@ export function Toolbar({
         active={activeTool === 'arrow-overlap'}
         onClick={() => setTool('arrow-overlap')}
       />
+
+      {isArrowTool && (
+        <>
+          <div className="w-px h-6 bg-white/20 mx-1" />
+          <ToolButton
+            icon={<Link size={16} />}
+            label="Concurrent"
+            shortcut="L"
+            active={concurrentMode}
+            onClick={onToggleConcurrent}
+          />
+        </>
+      )}
+
+      <div className="w-px h-6 bg-white/20 mx-1" />
+
       <ToolButton
         icon={<Square size={16} />}
         label="Zone"

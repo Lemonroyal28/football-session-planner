@@ -10,6 +10,7 @@ interface ShortcutHandlers {
   cancelDraw: () => void;
   canUndo: boolean;
   canRedo: boolean;
+  toggleConcurrent?: () => void;
 }
 
 export function useKeyboardShortcuts({
@@ -19,6 +20,7 @@ export function useKeyboardShortcuts({
   cancelDraw,
   canUndo,
   canRedo,
+  toggleConcurrent,
 }: ShortcutHandlers) {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -64,6 +66,22 @@ export function useKeyboardShortcuts({
           e.preventDefault();
           setTool('arrow-dribble');
           break;
+        case 'm':
+          e.preventDefault();
+          setTool('arrow-movement');
+          break;
+        case 'e':
+          e.preventDefault();
+          setTool('arrow-pressing');
+          break;
+        case 'o':
+          e.preventDefault();
+          setTool('arrow-overlap');
+          break;
+        case 'l':
+          e.preventDefault();
+          if (toggleConcurrent) toggleConcurrent();
+          break;
         case 'z':
           e.preventDefault();
           setTool('zone');
@@ -91,5 +109,5 @@ export function useKeyboardShortcuts({
 
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [setTool, undo, redo, cancelDraw, canUndo, canRedo]);
+  }, [setTool, undo, redo, cancelDraw, canUndo, canRedo, toggleConcurrent]);
 }

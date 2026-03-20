@@ -42,6 +42,7 @@ export function TacticalBoardEditor({ initialSession, onSave, embedded }: Tactic
   const [drawColor, setDrawColor] = useState('#ffffff');
   const [drawStrokeWidth, setDrawStrokeWidth] = useState(2);
   const [planningMode, setPlanningMode] = useState<PlanningMode>('match');
+  const [concurrentMode, setConcurrentMode] = useState(false);
 
   const {
     session,
@@ -150,6 +151,10 @@ export function TacticalBoardEditor({ initialSession, onSave, embedded }: Tactic
     setActiveTool('select');
   }, []);
 
+  const handleToggleConcurrent = useCallback(() => {
+    setConcurrentMode((prev) => !prev);
+  }, []);
+
   useKeyboardShortcuts({
     setTool: setActiveTool,
     undo: history.undo,
@@ -157,6 +162,7 @@ export function TacticalBoardEditor({ initialSession, onSave, embedded }: Tactic
     cancelDraw,
     canUndo: history.canUndo,
     canRedo: history.canRedo,
+    toggleConcurrent: handleToggleConcurrent,
   });
 
   useAutosave(session);
@@ -240,6 +246,8 @@ export function TacticalBoardEditor({ initialSession, onSave, embedded }: Tactic
             onPlay={handlePlay}
             onStop={stop}
             hasArrows={screenState.arrows.length > 0}
+            concurrentMode={concurrentMode}
+            onToggleConcurrent={handleToggleConcurrent}
           />
 
           <div className="flex items-center gap-2">
@@ -275,6 +283,8 @@ export function TacticalBoardEditor({ initialSession, onSave, embedded }: Tactic
             onPlay={handlePlay}
             onStop={stop}
             hasArrows={screenState.arrows.length > 0}
+            concurrentMode={concurrentMode}
+            onToggleConcurrent={handleToggleConcurrent}
           />
         </div>
       )}
@@ -333,6 +343,7 @@ export function TacticalBoardEditor({ initialSession, onSave, embedded }: Tactic
           drawColor={drawColor}
           drawStrokeWidth={drawStrokeWidth}
           animState={anim}
+          concurrentMode={concurrentMode}
         />
       </div>
 

@@ -57,6 +57,7 @@ interface CanvasContainerProps {
   drawColor: string;
   drawStrokeWidth: number;
   animState: AnimationState;
+  concurrentMode: boolean;
 }
 
 export function CanvasContainer({
@@ -71,6 +72,7 @@ export function CanvasContainer({
   drawColor,
   drawStrokeWidth,
   animState,
+  concurrentMode,
 }: CanvasContainerProps) {
 
   // Ball drag (free ball only)
@@ -143,7 +145,27 @@ export function CanvasContainer({
           bestDist = d;
         }
       }
-      const enrichedArrow = { ...arrow, fromPlayerId };
+
+      // Calculate timing group for concurrent actions
+      const lastArrow = state.arrows[state.arrows.length - 1];
+      let timingGroup = 0;
+
+      if (lastArrow) {
+        // If the last arrow was concurrent, continue in the same group
+        if (lastArrow.isConcurrent) {
+          timingGroup = lastArrow.timingGroup ?? 0;
+        } else {
+          // Otherwise, start a new group
+          timingGroup = (lastArrow.timingGroup ?? 0) + 1;
+        }
+      }
+
+      const enrichedArrow = {
+        ...arrow,
+        fromPlayerId,
+        isConcurrent: concurrentMode,
+        timingGroup,
+      };
 
       // Auto-transfer ball on pass arrows: move ownership to nearest player at endpoint
       let nextBall = state.ball;
@@ -168,7 +190,7 @@ export function CanvasContainer({
       onStateChange(next);
       onHistoryPush(next);
     },
-    [state, onStateChange, onHistoryPush]
+    [state, onStateChange, onHistoryPush, concurrentMode]
   );
 
   const arrowDraw = useArrowDraw(svgRef, arrowStyle || 'pass', onArrowCommit);

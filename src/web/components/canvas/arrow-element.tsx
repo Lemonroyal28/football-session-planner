@@ -39,6 +39,28 @@ export function ArrowElement({ arrow, sequenceNumber, onClick }: ArrowElementPro
     </g>
   ) : null;
 
+  // Concurrent indicator (link icon) near endpoint
+  const concurrentBadgeX = arrow.x2 - (dx / len) * 25;
+  const concurrentBadgeY = arrow.y2 - (dy / len) * 25;
+
+  const concurrentBadge = arrow.isConcurrent ? (
+    <g style={{ pointerEvents: 'none' }}>
+      <circle cx={concurrentBadgeX} cy={concurrentBadgeY} r={7} fill="#3b82f6" stroke="#ffffff" strokeWidth={1} />
+      <text
+        x={concurrentBadgeX}
+        y={concurrentBadgeY}
+        textAnchor="middle"
+        dominantBaseline="central"
+        fill="#ffffff"
+        fontSize={10}
+        fontWeight="bold"
+        style={{ userSelect: 'none' }}
+      >
+        ⚡
+      </text>
+    </g>
+  ) : null;
+
   // Curved arrows (dribble) with elastic control points
   if (arrow.style === 'dribble') {
     let d: string;
@@ -69,6 +91,7 @@ export function ArrowElement({ arrow, sequenceNumber, onClick }: ArrowElementPro
           onClick={(e) => onClick?.(e, arrow)}
         />
         {badge}
+        {concurrentBadge}
       </g>
     );
   }
@@ -104,6 +127,7 @@ export function ArrowElement({ arrow, sequenceNumber, onClick }: ArrowElementPro
           onClick={(e) => onClick?.(e, arrow)}
         />
         {badge}
+        {concurrentBadge}
       </g>
     );
   }
@@ -143,6 +167,7 @@ export function ArrowElement({ arrow, sequenceNumber, onClick }: ArrowElementPro
         onClick={(e) => onClick?.(e, arrow)}
       />
       {badge}
+      {concurrentBadge}
     </g>
   );
 }
