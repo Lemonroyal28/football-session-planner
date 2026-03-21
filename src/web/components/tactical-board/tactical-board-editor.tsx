@@ -227,20 +227,21 @@ export function TacticalBoardEditor({ initialSession, onSave, embedded }: Tactic
     <div className={`flex ${embedded ? 'h-full' : 'h-screen'} flex-col overflow-hidden`}>
       {/* Top bar */}
       {!embedded && (
-        <header className="flex items-center justify-between gap-4 bg-[#0f172a] border-b border-white/10 px-4 py-2">
-          <div className="flex items-center gap-4">
+        <header className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2 lg:gap-4 bg-[#0f172a] border-b border-white/10 px-2 sm:px-4 py-2">
+          <div className="flex items-center gap-2 sm:gap-4 min-w-0">
             <h1 className="text-sm font-bold text-white/90 whitespace-nowrap">
               Tactical Board
             </h1>
             <input
               value={session.meta.title}
               onChange={(e) => updateMeta({ title: e.target.value })}
-              className="bg-transparent text-sm text-white/70 border-b border-transparent hover:border-white/20 focus:border-white/40 outline-none px-1 py-0.5 w-48"
+              className="bg-transparent text-sm text-white/70 border-b border-transparent hover:border-white/20 focus:border-white/40 outline-none px-1 py-0.5 flex-1 min-w-0 max-w-[200px] sm:max-w-[300px]"
               placeholder="Session title..."
             />
           </div>
 
-          <Toolbar
+          <div className="flex-1 overflow-hidden">
+            <Toolbar
             activeTool={activeTool}
             setTool={setActiveTool}
             canUndo={history.canUndo}
@@ -255,8 +256,9 @@ export function TacticalBoardEditor({ initialSession, onSave, embedded }: Tactic
             concurrentMode={concurrentMode}
             onToggleConcurrent={handleToggleConcurrent}
           />
+          </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={handleSave}
               className="flex items-center gap-1 px-3 py-2 rounded-md text-sm font-medium text-white/70 hover:text-white hover:bg-white/10 transition-colors"
@@ -276,7 +278,7 @@ export function TacticalBoardEditor({ initialSession, onSave, embedded }: Tactic
 
       {/* Embedded toolbar */}
       {embedded && (
-        <div className="flex items-center justify-between bg-[#1a1a2e] border-b border-white/10 px-3 py-1.5">
+        <div className="bg-[#1a1a2e] border-b border-white/10 px-3 py-1.5 overflow-x-auto">
           <Toolbar
             activeTool={activeTool}
             setTool={setActiveTool}

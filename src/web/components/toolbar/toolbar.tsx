@@ -62,7 +62,8 @@ export function Toolbar({
   return (
     <>
       <HelpModal isOpen={showHelp} onClose={() => setShowHelp(false)} />
-      <div className="flex items-center gap-1 bg-[#1e293b] rounded-lg px-2 py-1 shadow-lg">
+      <div className="toolbar-container overflow-x-auto overflow-y-hidden">
+        <div className="flex items-center gap-1 bg-[#1e293b] rounded-lg px-2 py-1 shadow-lg min-w-max">
       <ToolButton
         icon={<MousePointer2 size={16} />}
         label="Select"
@@ -208,6 +209,7 @@ export function Toolbar({
         label="PNG"
         onClick={onExportPNG}
       />
+      </div>
     </div>
     </>
   );

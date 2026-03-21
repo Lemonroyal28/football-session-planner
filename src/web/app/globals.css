@@ -54,6 +54,16 @@ body {
     min-height: 44px;
   }
 
+  /* Stack header content vertically on mobile */
+  header {
+    flex-wrap: wrap;
+  }
+
+  /* Toolbar takes full width on mobile */
+  .toolbar-container {
+    width: 100%;
+  }
+
   /* Hide sidebar on mobile by default */
   aside {
     position: fixed;
@@ -68,11 +78,29 @@ body {
     left: 0;
   }
 
-  /* Toolbar should wrap or scroll horizontally */
+  /* Toolbar scrolls horizontally with smooth scrolling */
   .toolbar-container {
     overflow-x: auto;
     overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE/Edge */
+  }
+
+  /* Hide scrollbar but keep functionality */
+  .toolbar-container::-webkit-scrollbar {
+    display: none; /* Chrome/Safari */
+  }
+
+  /* Scroll shadow indicators */
+  .toolbar-container {
+    background:
+      linear-gradient(90deg, #1e293b 0%, transparent 20px) left,
+      linear-gradient(90deg, transparent calc(100% - 20px), #1e293b 100%) right;
+    background-repeat: no-repeat;
+    background-size: 20px 100%, 20px 100%;
+    background-attachment: local, local;
   }
 
   /* Adjust canvas padding on mobile */
