@@ -7,7 +7,7 @@ import { PlayerToken } from './player-token';
 interface PlayerLayerProps {
   players: CanvasPlayer[];
   ballOwnerId?: string | null;
-  onPlayerMouseDown?: (e: React.MouseEvent, player: CanvasPlayer) => void;
+  onPlayerMouseDown?: (e: React.MouseEvent | React.TouchEvent, player: CanvasPlayer) => void;
   onPlayerClick?: (e: React.MouseEvent, player: CanvasPlayer) => void;
   onPlayerDoubleClick?: (e: React.MouseEvent, player: CanvasPlayer) => void;
 }

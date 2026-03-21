@@ -1,7 +1,7 @@
 import { PITCH_X, PITCH_Y, PITCH_INNER_WIDTH, PITCH_INNER_HEIGHT } from '../../types/pitch';
 
 export function clientToSVG(
-  e: React.MouseEvent | MouseEvent,
+  e: React.MouseEvent | MouseEvent | Touch | { clientX: number; clientY: number },
   svgEl: SVGSVGElement
 ): { x: number; y: number } {
   const pt = svgEl.createSVGPoint();

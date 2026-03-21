@@ -404,11 +404,14 @@ export function CanvasContainer({
           viewBox={viewBox}
           preserveAspectRatio="xMidYMid meet"
           className="w-full h-full select-none rounded-lg shadow-2xl"
-          style={{ cursor }}
+          style={{ cursor, touchAction: 'none' }}
           onMouseMove={handleSvgMouseMove}
           onMouseUp={handleSvgMouseUp}
           onMouseDown={handleSvgMouseDown}
           onClick={handleSvgClick}
+          onTouchMove={handleSvgMouseMove as any}
+          onTouchEnd={handleSvgMouseUp as any}
+          onTouchStart={handleSvgMouseDown as any}
         >
           {/* Pitch surface */}
           <rect x={0} y={0} width={1050} height={680} fill="var(--pitch-green)" />

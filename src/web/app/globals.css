@@ -40,3 +40,81 @@ body {
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
   font-family: ui-monospace, monospace;
 }
+
+/* Mobile Responsive Styles */
+@media (max-width: 768px) {
+  /* Prevent zoom on input focus */
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+
+  /* Larger touch targets for mobile */
+  button, .tool-button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  /* Hide sidebar on mobile by default */
+  aside {
+    position: fixed;
+    left: -100%;
+    top: 0;
+    height: 100vh;
+    z-index: 40;
+    transition: left 0.3s ease;
+  }
+
+  aside.mobile-open {
+    left: 0;
+  }
+
+  /* Toolbar should wrap or scroll horizontally */
+  .toolbar-container {
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Adjust canvas padding on mobile */
+  .canvas-wrapper {
+    padding: 8px !important;
+  }
+
+  /* Help modal takes full screen on mobile */
+  .help-modal {
+    max-width: 100% !important;
+    max-height: 100vh !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+  }
+}
+
+/* Tablet styles */
+@media (min-width: 769px) and (max-width: 1024px) {
+  aside {
+    width: 200px;
+  }
+
+  /* Slightly smaller padding on tablet */
+  .canvas-wrapper {
+    padding: 12px !important;
+  }
+}
+
+/* Touch-friendly improvements */
+@media (hover: none) and (pointer: coarse) {
+  /* Increase player token size on touch devices */
+  .player-token circle {
+    r: 22px;
+  }
+
+  /* Increase arrow badge size */
+  .arrow-badge {
+    r: 11px;
+  }
+
+  /* Disable hover effects on touch devices */
+  button:hover {
+    transform: none !important;
+  }
+}

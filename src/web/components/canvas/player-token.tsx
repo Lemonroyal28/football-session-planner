@@ -7,7 +7,7 @@ import { PLAYER_COLORS } from '../../../types/pitch';
 interface PlayerTokenProps {
   player: CanvasPlayer;
   hasBall?: boolean;
-  onMouseDown?: (e: React.MouseEvent, player: CanvasPlayer) => void;
+  onMouseDown?: (e: React.MouseEvent | React.TouchEvent, player: CanvasPlayer) => void;
   onClick?: (e: React.MouseEvent, player: CanvasPlayer) => void;
   onDoubleClick?: (e: React.MouseEvent, player: CanvasPlayer) => void;
 }
@@ -21,8 +21,9 @@ export function PlayerToken({ player, hasBall, onMouseDown, onClick, onDoubleCli
   return (
     <g
       className="player-token"
-      style={{ cursor: 'pointer' }}
+      style={{ cursor: 'pointer', touchAction: 'none' }}
       onMouseDown={(e) => onMouseDown?.(e, player)}
+      onTouchStart={(e) => onMouseDown?.(e, player)}
       onClick={(e) => onClick?.(e, player)}
       onDoubleClick={(e) => onDoubleClick?.(e, player)}
     >

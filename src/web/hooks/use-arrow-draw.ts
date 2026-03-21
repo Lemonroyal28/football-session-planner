@@ -11,6 +11,12 @@ interface DrawStart {
   y: number;
 }
 
+// Helper to get touch/mouse coordinates
+function getEventPoint(e: MouseEvent | TouchEvent, svg: SVGSVGElement) {
+  const clientEvent = 'touches' in e ? e.touches[0] : e;
+  return clientToSVG(clientEvent, svg);
+}
+
 export function useArrowDraw(
   svgRef: React.RefObject<SVGSVGElement | null>,
   style: ArrowStyle,
@@ -20,10 +26,11 @@ export function useArrowDraw(
   const [preview, setPreview] = useState<{ x: number; y: number } | null>(null);
 
   const handleClick = useCallback(
-    (e: React.MouseEvent) => {
+    (e: React.MouseEvent | React.TouchEvent) => {
       const svg = svgRef.current;
       if (!svg) return;
-      const pt = clientToSVG(e.nativeEvent, svg);
+      const nativeEvent = e.nativeEvent as MouseEvent | TouchEvent;
+      const pt = getEventPoint(nativeEvent, svg);
 
       if (!drawStart) {
         setDrawStart({ x: pt.x, y: pt.y });
@@ -46,11 +53,12 @@ export function useArrowDraw(
   );
 
   const handleMouseMove = useCallback(
-    (e: React.MouseEvent) => {
+    (e: React.MouseEvent | React.TouchEvent) => {
       if (!drawStart) return;
       const svg = svgRef.current;
       if (!svg) return;
-      const pt = clientToSVG(e.nativeEvent, svg);
+      const nativeEvent = e.nativeEvent as MouseEvent | TouchEvent;
+      const pt = getEventPoint(nativeEvent, svg);
       setPreview({ x: pt.x, y: pt.y });
     },
     [svgRef, drawStart]
