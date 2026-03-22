@@ -760,6 +760,10 @@ export function TacticalBoardEditor({ initialSession, onSave, embedded }: Tactic
           }}
           onUpdate={handleUpdateAction}
           onDelete={handleDeleteAction}
+          onEditPath={(actionId) => {
+            // Enable path editing mode
+            setEditingPathActionId(actionId);
+          }}
         />
       )}
     </div>

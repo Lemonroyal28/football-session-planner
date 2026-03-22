@@ -43,6 +43,7 @@ import { getSequenceArrows } from '../../lib/sequence-to-arrows';
 import { PathDrawPreview } from './path-draw-preview';
 import { PathEditHandles } from './path-edit-handles';
 import { ActionDrawPreview } from './action-draw-preview';
+import { CurveEditHandles } from './curve-edit-handles';
 
 function getViewBox(pitchType: PitchType): string {
   switch (pitchType) {
@@ -690,7 +691,7 @@ export function CanvasContainer({
             />
           )}
 
-          {/* Path edit handles */}
+          {/* Path/Curve edit handles */}
           {editingPathActionId && (() => {
             const action = state.sequences
               .flatMap((seq) => seq.actions)
@@ -700,6 +701,32 @@ export function CanvasContainer({
               return null;
             }
 
+            // For curved actions, show curve control point editor
+            if (action.line_style === 'curved' && action.path_points.length >= 3) {
+              return (
+                <CurveEditHandles
+                  action={action}
+                  onControlPointDrag={(x, y) => {
+                    if (onPathPointDrag) {
+                      // Control point is always at index 1 for quadratic bezier
+                      onPathPointDrag(editingPathActionId, 1, x, y);
+                    }
+                  }}
+                  onDragStart={() => {
+                    if (onPathPointDragStart) {
+                      onPathPointDragStart(editingPathActionId, 1);
+                    }
+                  }}
+                  onDragEnd={() => {
+                    if (onPathPointDragEnd) {
+                      onPathPointDragEnd();
+                    }
+                  }}
+                />
+              );
+            }
+
+            // For free-draw actions, show path point editor
             return (
               <PathEditHandles
                 action={action}

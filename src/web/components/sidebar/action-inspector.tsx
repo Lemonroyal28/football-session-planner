@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { X, Trash2, Edit3, ArrowRight } from 'lucide-react';
-import type { TacticalAction, ActionType } from '../../../types/tactical-sequence';
+import { X, Trash2, Edit3, ArrowRight, Edit2 } from 'lucide-react';
+import type { TacticalAction, ActionType, LineStyle } from '../../../types/tactical-sequence';
 import type { CanvasPlayer } from '../../../types/canvas';
 
 interface ActionInspectorProps {
@@ -11,6 +11,7 @@ interface ActionInspectorProps {
   onClose: () => void;
   onUpdate: (actionId: string, updates: Partial<TacticalAction>) => void;
   onDelete: (actionId: string) => void;
+  onEditPath?: (actionId: string) => void;
 }
 
 const ACTION_TYPE_LABELS: Record<ActionType, string> = {
@@ -23,15 +24,70 @@ const ACTION_TYPE_LABELS: Record<ActionType, string> = {
   overlap: 'Overlap',
 };
 
+const LINE_STYLE_LABELS: Record<LineStyle, string> = {
+  straight: 'Straight',
+  curved: 'Curved',
+  free_draw: 'Free Draw',
+};
+
 export function ActionInspector({
   action,
   players,
   onClose,
   onUpdate,
   onDelete,
+  onEditPath,
 }: ActionInspectorProps) {
   const [editingNote, setEditingNote] = useState(false);
   const [noteValue, setNoteValue] = useState('');
+
+  const handleActionTypeChange = useCallback(
+    (newType: ActionType) => {
+      if (action && newType !== action.action_type) {
+        onUpdate(action.action_id, { action_type: newType });
+      }
+    },
+    [action, onUpdate]
+  );
+
+  const handleLineStyleChange = useCallback(
+    (newStyle: LineStyle) => {
+      if (action && newStyle !== action.line_style) {
+        // Convert geometry when changing line style
+        const updates: Partial<TacticalAction> = { line_style: newStyle };
+
+        // Convert path points based on new style
+        if (action.path_points && action.path_points.length > 0) {
+          const start = action.path_points[0];
+          const end = action.path_points[action.path_points.length - 1];
+
+          if (newStyle === 'straight') {
+            // straight: just keep start and end
+            updates.path_points = [start, end];
+          } else if (newStyle === 'curved') {
+            // curved: generate default control point
+            const midX = (start.x + end.x) / 2;
+            const midY = (start.y + end.y) / 2;
+            const dx = end.x - start.x;
+            const dy = end.y - start.y;
+            // Offset control point perpendicular to line
+            const controlX = midX - dy * 0.2;
+            const controlY = midY + dx * 0.2;
+            updates.path_points = [start, { x: controlX, y: controlY }, end];
+          } else if (newStyle === 'free_draw') {
+            // free_draw: if coming from straight, create simple 2-point path
+            if (action.line_style === 'straight') {
+              updates.path_points = [start, end];
+            }
+            // If coming from curved, keep existing points
+          }
+        }
+
+        onUpdate(action.action_id, updates);
+      }
+    },
+    [action, onUpdate]
+  );
 
   const handleStartEditNote = useCallback(() => {
     setNoteValue(action?.coaching_note || '');
@@ -108,6 +164,54 @@ export function ActionInspector({
                   <span className="text-sm text-white/90">{getPlayerLabel(toPlayer)}</span>
                   <ArrowRight size={14} className="text-white/30 ml-auto" />
                 </div>
+              )}
+            </div>
+          </div>
+
+          {/* Action Type */}
+          <div className="space-y-2">
+            <label className="text-xs font-medium text-white/50 uppercase tracking-wider">
+              Action Type
+            </label>
+            <select
+              value={action.action_type}
+              onChange={(e) => handleActionTypeChange(e.target.value as ActionType)}
+              className="w-full bg-white/5 text-sm text-white/90 border border-white/10 rounded px-3 py-2 outline-none focus:border-emerald-500/50"
+            >
+              {Object.entries(ACTION_TYPE_LABELS).map(([value, label]) => (
+                <option key={value} value={value} className="bg-[#1e293b]">
+                  {label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Line Style */}
+          <div className="space-y-2">
+            <label className="text-xs font-medium text-white/50 uppercase tracking-wider">
+              Line Style
+            </label>
+            <div className="flex gap-2">
+              <select
+                value={action.line_style}
+                onChange={(e) => handleLineStyleChange(e.target.value as LineStyle)}
+                className="flex-1 bg-white/5 text-sm text-white/90 border border-white/10 rounded px-3 py-2 outline-none focus:border-emerald-500/50"
+              >
+                {Object.entries(LINE_STYLE_LABELS).map(([value, label]) => (
+                  <option key={value} value={value} className="bg-[#1e293b]">
+                    {label}
+                  </option>
+                ))}
+              </select>
+              {(action.line_style === 'curved' || action.line_style === 'free_draw') && onEditPath && (
+                <button
+                  onClick={() => onEditPath(action.action_id)}
+                  className="px-3 py-2 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/40 rounded text-xs font-medium flex items-center gap-1"
+                  title="Edit path geometry"
+                >
+                  <Edit2 size={14} />
+                  Edit Path
+                </button>
               )}
             </div>
           </div>

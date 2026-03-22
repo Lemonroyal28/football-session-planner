@@ -14,9 +14,23 @@ export function ArrowElement({ arrow, sequenceNumber, onClick }: ArrowElementPro
   const color = getArrowColor(arrow.style);
   const markerId = `url(#${getArrowheadId(arrow.style)})`;
 
-  // Offset the badge slightly along the arrow direction
-  const dx = arrow.x2 - arrow.x1;
-  const dy = arrow.y2 - arrow.y1;
+  // Get line style from arrow metadata (new system) or fall back to style-based detection (legacy)
+  const lineStyle = (arrow as any).lineStyle ||
+    (arrow.style === 'dribble' ? 'curved' :
+     (arrow as any).pathPoints && (arrow as any).pathPoints.length > 2 ? 'free_draw' : 'straight');
+
+  const pathPoints = (arrow as any).pathPoints || [];
+
+  // Calculate direction for badge placement
+  let dx = arrow.x2 - arrow.x1;
+  let dy = arrow.y2 - arrow.y1;
+
+  // For curved/free-draw, calculate direction from first segment
+  if (lineStyle !== 'straight' && pathPoints.length >= 2) {
+    dx = pathPoints[1].x - pathPoints[0].x;
+    dy = pathPoints[1].y - pathPoints[0].y;
+  }
+
   const len = Math.hypot(dx, dy) || 1;
   const badgeX = arrow.x1 + (dx / len) * 18;
   const badgeY = arrow.y1 + (dy / len) * 18;
@@ -39,9 +53,19 @@ export function ArrowElement({ arrow, sequenceNumber, onClick }: ArrowElementPro
     </g>
   ) : null;
 
+  // Calculate final direction for concurrent badge
+  let finalDx = dx;
+  let finalDy = dy;
+  if (lineStyle !== 'straight' && pathPoints.length >= 2) {
+    const lastIdx = pathPoints.length - 1;
+    finalDx = pathPoints[lastIdx].x - pathPoints[lastIdx - 1].x;
+    finalDy = pathPoints[lastIdx].y - pathPoints[lastIdx - 1].y;
+  }
+  const finalLen = Math.hypot(finalDx, finalDy) || 1;
+
   // Concurrent indicator (link icon) near endpoint
-  const concurrentBadgeX = arrow.x2 - (dx / len) * 25;
-  const concurrentBadgeY = arrow.y2 - (dy / len) * 25;
+  const concurrentBadgeX = arrow.x2 - (finalDx / finalLen) * 25;
+  const concurrentBadgeY = arrow.y2 - (finalDy / finalLen) * 25;
 
   const concurrentBadge = arrow.isConcurrent ? (
     <g style={{ pointerEvents: 'none' }}>
@@ -61,7 +85,84 @@ export function ArrowElement({ arrow, sequenceNumber, onClick }: ArrowElementPro
     </g>
   ) : null;
 
-  // Curved arrows (dribble) with elastic control points
+  // Determine line style based on arrow type
+  let strokeDasharray: string | undefined;
+  let strokeWidth = 2.5;
+
+  switch (arrow.style) {
+    case 'run':
+      strokeDasharray = '8 4'; // Dashed
+      break;
+    case 'movement':
+      strokeDasharray = '2 3'; // Dotted
+      break;
+    case 'pressing':
+      strokeWidth = 3.5; // Thicker solid
+      break;
+    case 'dribble':
+      // Dribble is solid but curved - don't set dash array
+      break;
+    case 'pass':
+    default:
+      strokeDasharray = undefined; // Solid
+      break;
+  }
+
+  // NEW RENDERING SYSTEM: Check lineStyle first
+  // Render curved paths using path points
+  if (lineStyle === 'curved' && pathPoints.length >= 3) {
+    // Quadratic bezier curve: start → control → end
+    const start = pathPoints[0];
+    const control = pathPoints[1];
+    const end = pathPoints[pathPoints.length - 1];
+    const d = `M ${start.x} ${start.y} Q ${control.x} ${control.y} ${end.x} ${end.y}`;
+
+    return (
+      <g>
+        <path
+          d={d}
+          fill="none"
+          stroke={color}
+          strokeWidth={strokeWidth}
+          strokeDasharray={strokeDasharray}
+          markerEnd={markerId}
+          style={{ cursor: 'pointer' }}
+          onClick={(e) => onClick?.(e, arrow)}
+        />
+        {badge}
+        {concurrentBadge}
+      </g>
+    );
+  }
+
+  // Render free-draw paths using path points
+  if (lineStyle === 'free_draw' && pathPoints.length >= 2) {
+    let d = `M ${pathPoints[0].x} ${pathPoints[0].y}`;
+    for (let i = 1; i < pathPoints.length; i++) {
+      d += ` L ${pathPoints[i].x} ${pathPoints[i].y}`;
+    }
+
+    return (
+      <g>
+        <path
+          d={d}
+          fill="none"
+          stroke={color}
+          strokeWidth={strokeWidth}
+          strokeDasharray={strokeDasharray}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          markerEnd={markerId}
+          style={{ cursor: 'pointer' }}
+          onClick={(e) => onClick?.(e, arrow)}
+        />
+        {badge}
+        {concurrentBadge}
+      </g>
+    );
+  }
+
+  // LEGACY: Curved arrows (dribble) with elastic control points
   if (arrow.style === 'dribble') {
     let d: string;
 
@@ -132,26 +233,7 @@ export function ArrowElement({ arrow, sequenceNumber, onClick }: ArrowElementPro
     );
   }
 
-  // Determine line style based on arrow type
-  let strokeDasharray: string | undefined;
-  let strokeWidth = 2.5;
-
-  switch (arrow.style) {
-    case 'run':
-      strokeDasharray = '8 4'; // Dashed
-      break;
-    case 'movement':
-      strokeDasharray = '2 3'; // Dotted
-      break;
-    case 'pressing':
-      strokeWidth = 3.5; // Thicker solid
-      break;
-    case 'pass':
-    default:
-      strokeDasharray = undefined; // Solid
-      break;
-  }
-
+  // Straight line rendering (default)
   return (
     <g>
       <line
