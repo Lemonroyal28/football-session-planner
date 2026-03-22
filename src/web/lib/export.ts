@@ -52,3 +52,4 @@ export function parseShareURL(): Session | null {
     return null;
   }
 }
+

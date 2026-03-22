@@ -1,15 +1,16 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Download, FileJson, Share2, ChevronDown } from 'lucide-react';
+import { Download, FileJson, Share2, ChevronDown, FileText } from 'lucide-react';
 
 interface ExportMenuProps {
   onExportPNG: () => void;
   onExportFSP: () => void;
+  onExportPDF: () => void;
   onShare: () => void;
 }
 
-export function ExportMenu({ onExportPNG, onExportFSP, onShare }: ExportMenuProps) {
+export function ExportMenu({ onExportPNG, onExportFSP, onExportPDF, onShare }: ExportMenuProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -38,6 +39,12 @@ export function ExportMenu({ onExportPNG, onExportFSP, onShare }: ExportMenuProp
             className="flex items-center gap-2 w-full px-3 py-2 text-sm text-white/80 hover:bg-white/10 transition-colors"
           >
             <Download size={14} /> PNG Image
+          </button>
+          <button
+            onClick={() => { onExportPDF(); setOpen(false); }}
+            className="flex items-center gap-2 w-full px-3 py-2 text-sm text-white/80 hover:bg-white/10 transition-colors"
+          >
+            <FileText size={14} /> PDF Document
           </button>
           <button
             onClick={() => { onExportFSP(); setOpen(false); }}

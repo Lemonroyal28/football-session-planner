@@ -25,6 +25,7 @@ import { ScreenTabs } from '../session/screen-tabs';
 import { NotesPanel } from '../notes/notes-panel';
 import { ExportMenu } from '../export/export-menu';
 import { exportPNG, exportFSP, generateShareURL, parseShareURL } from '../../lib/export';
+import { exportSessionPDF } from '../../lib/export-pdf';
 import { saveSession, loadDraft } from '../../lib/storage';
 import { createTacticalSequence, addActionToSequence, getCurrentBallHolder } from '../../lib/sequence-helpers';
 import { sequenceToArrows } from '../../lib/sequence-to-arrows';
@@ -207,6 +208,21 @@ export function TacticalBoardEditor({ initialSession, onSave, embedded }: Tactic
 
   const handleExportFSP = useCallback(() => {
     exportFSP(session);
+  }, [session]);
+
+  const handleExportPDF = useCallback(async () => {
+    if (!svgRef.current) return;
+
+    // For multi-screen sessions, we only export the current screen's SVG
+    // In the future, we could render all screens
+    const svgElements = [svgRef.current];
+
+    try {
+      await exportSessionPDF(session, svgElements);
+    } catch (error) {
+      console.error('PDF export failed:', error);
+      alert('Failed to export PDF. Please try again.');
+    }
   }, [session]);
 
   const handleShare = useCallback(() => {
@@ -502,6 +518,7 @@ export function TacticalBoardEditor({ initialSession, onSave, embedded }: Tactic
             <ExportMenu
               onExportPNG={handleExportPNG}
               onExportFSP={handleExportFSP}
+              onExportPDF={handleExportPDF}
               onShare={handleShare}
             />
           </div>
