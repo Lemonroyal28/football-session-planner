@@ -40,6 +40,7 @@ import { clientToSVG, clampToPitch } from '../../lib/svg-utils';
 import { newId } from '../../lib/id';
 import { getSequenceArrows } from '../../lib/sequence-to-arrows';
 import { PathDrawPreview } from './path-draw-preview';
+import { PathEditHandles } from './path-edit-handles';
 
 function getViewBox(pitchType: PitchType): string {
   switch (pitchType) {
@@ -68,6 +69,10 @@ interface CanvasContainerProps {
   onArrowClickProp?: (arrowId: string) => void;
   pathDrawingMode?: { active: boolean; actionType: ActionType; fromPlayerId: string } | null;
   onPathComplete?: (actionType: ActionType, fromPlayerId: string, points: { x: number; y: number }[]) => void;
+  editingPathActionId?: string | null;
+  onPathPointDragStart?: (actionId: string, pointIndex: number) => void;
+  onPathPointDrag?: (actionId: string, pointIndex: number, x: number, y: number) => void;
+  onPathPointDragEnd?: () => void;
 }
 
 export function CanvasContainer({
@@ -89,10 +94,17 @@ export function CanvasContainer({
   onArrowClickProp,
   pathDrawingMode = null,
   onPathComplete: onPathCompleteProp,
+  editingPathActionId = null,
+  onPathPointDragStart,
+  onPathPointDrag,
+  onPathPointDragEnd,
 }: CanvasContainerProps) {
 
   // Ball drag (free ball only)
   const [ballDragging, setBallDragging] = useState<{ offsetX: number; offsetY: number } | null>(null);
+
+  // Path point dragging
+  const [draggingPathPoint, setDraggingPathPoint] = useState<{ actionId: string; pointIndex: number; offsetX: number; offsetY: number } | null>(null);
 
   const handleBallMouseDown = useCallback(
     (e: React.MouseEvent) => {
@@ -299,6 +311,17 @@ export function CanvasContainer({
     (e: React.MouseEvent<SVGSVGElement>) => {
       if (animState.playing) return;
 
+      // Path point dragging
+      if (draggingPathPoint && onPathPointDrag) {
+        const svg = svgRef.current;
+        if (svg) {
+          const pt = clientToSVG(e.nativeEvent, svg);
+          const clamped = clampToPitch(pt.x - draggingPathPoint.offsetX, pt.y - draggingPathPoint.offsetY);
+          onPathPointDrag(draggingPathPoint.actionId, draggingPathPoint.pointIndex, clamped.x, clamped.y);
+        }
+        return;
+      }
+
       // Path drawing preview
       if (pathDraw.state.isDrawing) {
         const svg = svgRef.current;
@@ -314,17 +337,25 @@ export function CanvasContainer({
       else if (activeTool === 'zone') zoneDraw.handleMouseMove(e);
       else if (activeTool === 'draw') scribbleDraw.handleMouseMove(e);
     },
-    [activeTool, arrowStyle, handleBallDragMove, dragMouseMove, arrowDraw, zoneDraw, scribbleDraw, animState.playing, pathDraw, svgRef]
+    [activeTool, arrowStyle, handleBallDragMove, dragMouseMove, arrowDraw, zoneDraw, scribbleDraw, animState.playing, pathDraw, svgRef, draggingPathPoint, onPathPointDrag]
   );
 
   const handleSvgMouseUp = useCallback(
     (e: React.MouseEvent<SVGSVGElement>) => {
       if (animState.playing) return;
+
+      // Path point drag end
+      if (draggingPathPoint && onPathPointDragEnd) {
+        setDraggingPathPoint(null);
+        onPathPointDragEnd();
+        return;
+      }
+
       if (activeTool === 'select') { handleBallDragUp(); dragMouseUp(); }
       else if (activeTool === 'zone') zoneDraw.handleMouseUp(e);
       else if (activeTool === 'draw') scribbleDraw.handleMouseUp();
     },
-    [activeTool, handleBallDragUp, dragMouseUp, zoneDraw, scribbleDraw, animState.playing]
+    [activeTool, handleBallDragUp, dragMouseUp, zoneDraw, scribbleDraw, animState.playing, draggingPathPoint, onPathPointDragEnd]
   );
 
   const handleSvgMouseDown = useCallback(
@@ -443,6 +474,7 @@ export function CanvasContainer({
   );
 
   const cursor =
+    draggingPathPoint ? 'grabbing' :
     pathDraw.state.isDrawing ? 'crosshair' :
     activeTool === 'delete' ? 'crosshair' :
     activeTool === 'zone' ? 'crosshair' :
@@ -565,6 +597,49 @@ export function CanvasContainer({
 
           {/* Path drawing preview */}
           {pathDraw.state.isDrawing && <PathDrawPreview state={pathDraw.state} />}
+
+          {/* Path edit handles */}
+          {editingPathActionId && (() => {
+            const action = state.sequences
+              .flatMap((seq) => seq.actions)
+              .find((a) => a.action_id === editingPathActionId);
+
+            if (!action || !action.path_points || action.path_points.length === 0) {
+              return null;
+            }
+
+            return (
+              <PathEditHandles
+                action={action}
+                onPointDrag={(pointIndex, x, y) => {
+                  if (onPathPointDrag) {
+                    onPathPointDrag(editingPathActionId, pointIndex, x, y);
+                  }
+                }}
+                onDragStart={(pointIndex) => {
+                  if (onPathPointDragStart) {
+                    onPathPointDragStart(editingPathActionId, pointIndex);
+                  }
+                  const svg = svgRef.current;
+                  if (svg && action.path_points) {
+                    const point = action.path_points[pointIndex];
+                    setDraggingPathPoint({
+                      actionId: editingPathActionId,
+                      pointIndex,
+                      offsetX: 0,
+                      offsetY: 0,
+                    });
+                  }
+                }}
+                onDragEnd={() => {
+                  setDraggingPathPoint(null);
+                  if (onPathPointDragEnd) {
+                    onPathPointDragEnd();
+                  }
+                }}
+              />
+            );
+          })()}
         </svg>
       </div>
     </div>

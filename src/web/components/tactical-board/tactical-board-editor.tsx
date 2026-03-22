@@ -56,6 +56,8 @@ export function TacticalBoardEditor({ initialSession, onSave, embedded }: Tactic
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
   const [selectedActionId, setSelectedActionId] = useState<string | null>(null);
   const [pathDrawingMode, setPathDrawingMode] = useState<{ active: boolean; actionType: ActionType; fromPlayerId: string } | null>(null);
+  const [editingPathActionId, setEditingPathActionId] = useState<string | null>(null);
+  const [draggingPathPoint, setDraggingPathPoint] = useState<{ actionId: string; pointIndex: number } | null>(null);
 
   const {
     session,
@@ -460,6 +462,13 @@ export function TacticalBoardEditor({ initialSession, onSave, embedded }: Tactic
         const action = activeSequence.actions.find((a) => a.action_id === arrowId);
         if (action) {
           setSelectedActionId(arrowId);
+
+          // If this action has path points, enable path editing
+          if (action.path_points && action.path_points.length > 0) {
+            setEditingPathActionId(arrowId);
+          } else {
+            setEditingPathActionId(null);
+          }
         }
       }
     },
@@ -511,6 +520,46 @@ export function TacticalBoardEditor({ initialSession, onSave, embedded }: Tactic
     },
     [activeSequence, screenState, activeScreenIndex, updateScreenState, history]
   );
+
+  const handlePathPointDragStart = useCallback(
+    (actionId: string, pointIndex: number) => {
+      setDraggingPathPoint({ actionId, pointIndex });
+    },
+    []
+  );
+
+  const handlePathPointDrag = useCallback(
+    (actionId: string, pointIndex: number, x: number, y: number) => {
+      if (!activeSequence) return;
+
+      const action = activeSequence.actions.find((a) => a.action_id === actionId);
+      if (!action || !action.path_points) return;
+
+      const updatedPoints = [...action.path_points];
+      updatedPoints[pointIndex] = { x, y };
+
+      const next = {
+        ...screenState,
+        sequences: screenState.sequences.map((seq) => ({
+          ...seq,
+          actions: seq.actions.map((a) =>
+            a.action_id === actionId
+              ? { ...a, path_points: updatedPoints }
+              : a
+          ),
+        })),
+      };
+      updateScreenState(activeScreenIndex, next);
+    },
+    [activeSequence, screenState, activeScreenIndex, updateScreenState]
+  );
+
+  const handlePathPointDragEnd = useCallback(() => {
+    if (draggingPathPoint) {
+      history.push(screenState);
+      setDraggingPathPoint(null);
+    }
+  }, [draggingPathPoint, screenState, history]);
 
   const selectedAction = selectedActionId && activeSequence
     ? activeSequence.actions.find((a) => a.action_id === selectedActionId) || null
@@ -670,6 +719,10 @@ export function TacticalBoardEditor({ initialSession, onSave, embedded }: Tactic
           onArrowClickProp={handleArrowClick}
           pathDrawingMode={pathDrawingMode}
           onPathComplete={handlePathComplete}
+          editingPathActionId={editingPathActionId}
+          onPathPointDragStart={handlePathPointDragStart}
+          onPathPointDrag={handlePathPointDrag}
+          onPathPointDragEnd={handlePathPointDragEnd}
         />
       </div>
 
@@ -687,7 +740,10 @@ export function TacticalBoardEditor({ initialSession, onSave, embedded }: Tactic
         <ActionInspector
           action={selectedAction}
           players={screenState.players}
-          onClose={() => setSelectedActionId(null)}
+          onClose={() => {
+            setSelectedActionId(null);
+            setEditingPathActionId(null);
+          }}
           onUpdate={handleUpdateAction}
           onDelete={handleDeleteAction}
         />
