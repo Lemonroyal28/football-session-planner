@@ -33,10 +33,13 @@ import { useDrag } from '../../hooks/use-drag';
 import { useArrowDraw } from '../../hooks/use-arrow-draw';
 import { useZoneDraw } from '../../hooks/use-zone-draw';
 import { useScribbleDraw } from '../../hooks/use-scribble-draw';
+import { usePathDraw } from '../../hooks/use-path-draw';
 import type { AnimationState } from '../../hooks/use-animation';
+import type { ActionType } from '../../../types/tactical-sequence';
 import { clientToSVG, clampToPitch } from '../../lib/svg-utils';
 import { newId } from '../../lib/id';
 import { getSequenceArrows } from '../../lib/sequence-to-arrows';
+import { PathDrawPreview } from './path-draw-preview';
 
 function getViewBox(pitchType: PitchType): string {
   switch (pitchType) {
@@ -63,6 +66,8 @@ interface CanvasContainerProps {
   onPlayerClick?: (playerId: string) => void;
   selectedPlayerId?: string | null;
   onArrowClickProp?: (arrowId: string) => void;
+  pathDrawingMode?: { active: boolean; actionType: ActionType; fromPlayerId: string } | null;
+  onPathComplete?: (actionType: ActionType, fromPlayerId: string, points: { x: number; y: number }[]) => void;
 }
 
 export function CanvasContainer({
@@ -82,6 +87,8 @@ export function CanvasContainer({
   onPlayerClick: onPlayerClickProp,
   selectedPlayerId,
   onArrowClickProp,
+  pathDrawingMode = null,
+  onPathComplete: onPathCompleteProp,
 }: CanvasContainerProps) {
 
   // Ball drag (free ball only)
@@ -228,6 +235,28 @@ export function CanvasContainer({
 
   const scribbleDraw = useScribbleDraw(svgRef, drawColor, drawStrokeWidth, onScribbleCommit);
 
+  // Path drawing for sequences
+  const handlePathComplete = useCallback(
+    (actionType: ActionType, fromPlayerId: string, points: { x: number; y: number }[]) => {
+      if (onPathCompleteProp) {
+        onPathCompleteProp(actionType, fromPlayerId, points);
+      }
+    },
+    [onPathCompleteProp]
+  );
+
+  const pathDraw = usePathDraw(svgRef, handlePathComplete);
+
+  // Start path drawing when mode activates
+  React.useEffect(() => {
+    if (pathDrawingMode?.active && !pathDraw.state.isDrawing) {
+      const player = state.players.find((p) => p.id === pathDrawingMode.fromPlayerId);
+      if (player) {
+        pathDraw.startDrawing(pathDrawingMode.actionType, pathDrawingMode.fromPlayerId, player.x, player.y);
+      }
+    }
+  }, [pathDrawingMode, pathDraw, state.players]);
+
   // Cone placement — single click places a cone
   const handleConePlacement = useCallback(
     (e: React.MouseEvent) => {
@@ -269,12 +298,23 @@ export function CanvasContainer({
   const handleSvgMouseMove = useCallback(
     (e: React.MouseEvent<SVGSVGElement>) => {
       if (animState.playing) return;
+
+      // Path drawing preview
+      if (pathDraw.state.isDrawing) {
+        const svg = svgRef.current;
+        if (svg) {
+          const pt = clientToSVG(e.nativeEvent, svg);
+          pathDraw.updatePreview(pt.x, pt.y);
+        }
+        return;
+      }
+
       if (activeTool === 'select') { handleBallDragMove(e); dragMouseMove(e); }
       else if (arrowStyle) arrowDraw.handleMouseMove(e);
       else if (activeTool === 'zone') zoneDraw.handleMouseMove(e);
       else if (activeTool === 'draw') scribbleDraw.handleMouseMove(e);
     },
-    [activeTool, arrowStyle, handleBallDragMove, dragMouseMove, arrowDraw, zoneDraw, scribbleDraw, animState.playing]
+    [activeTool, arrowStyle, handleBallDragMove, dragMouseMove, arrowDraw, zoneDraw, scribbleDraw, animState.playing, pathDraw, svgRef]
   );
 
   const handleSvgMouseUp = useCallback(
@@ -299,10 +339,22 @@ export function CanvasContainer({
   const handleSvgClick = useCallback(
     (e: React.MouseEvent<SVGSVGElement>) => {
       if (animState.playing) return;
+
+      // Path drawing - add point
+      if (pathDraw.state.isDrawing) {
+        const svg = svgRef.current;
+        if (svg) {
+          const pt = clientToSVG(e.nativeEvent, svg);
+          const clamped = clampToPitch(pt.x, pt.y);
+          pathDraw.addPoint(clamped.x, clamped.y);
+        }
+        return;
+      }
+
       if (arrowStyle) arrowDraw.handleClick(e);
       else if (activeTool === 'cone') handleConePlacement(e);
     },
-    [arrowStyle, arrowDraw, activeTool, handleConePlacement, animState.playing]
+    [arrowStyle, arrowDraw, activeTool, handleConePlacement, animState.playing, pathDraw, svgRef]
   );
 
   // Ball assignment — double-click a player to give/remove ball
@@ -391,6 +443,7 @@ export function CanvasContainer({
   );
 
   const cursor =
+    pathDraw.state.isDrawing ? 'crosshair' :
     activeTool === 'delete' ? 'crosshair' :
     activeTool === 'zone' ? 'crosshair' :
     activeTool === 'cone' ? 'copy' :
@@ -509,6 +562,9 @@ export function CanvasContainer({
               style={{ pointerEvents: 'none' }}
             />
           )}
+
+          {/* Path drawing preview */}
+          {pathDraw.state.isDrawing && <PathDrawPreview state={pathDraw.state} />}
         </svg>
       </div>
     </div>

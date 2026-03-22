@@ -33,6 +33,8 @@ interface SequenceBuilderPanelProps {
   onPlaySequence: (sequenceId: string) => void;
   /** Update sequence title */
   onUpdateSequenceTitle: (sequenceId: string, title: string) => void;
+  /** Start path drawing mode for dribble/run */
+  onStartPathDrawing: (actionType: ActionType) => void;
 }
 
 export function SequenceBuilderPanel({
@@ -49,6 +51,7 @@ export function SequenceBuilderPanel({
   onSelectSequence,
   onPlaySequence,
   onUpdateSequenceTitle,
+  onStartPathDrawing,
 }: SequenceBuilderPanelProps) {
   const [showSequenceList, setShowSequenceList] = useState(false);
 
@@ -75,12 +78,12 @@ export function SequenceBuilderPanel({
   }, [selectedPlayer, onAddAction]);
 
   const handleAddDribble = useCallback(() => {
-    onAddAction('dribble');
-  }, [onAddAction]);
+    onStartPathDrawing('dribble');
+  }, [onStartPathDrawing]);
 
   const handleAddRun = useCallback(() => {
-    onAddAction('run');
-  }, [onAddAction]);
+    onStartPathDrawing('run');
+  }, [onStartPathDrawing]);
 
   const handleAddShot = useCallback(() => {
     onAddAction('shot');

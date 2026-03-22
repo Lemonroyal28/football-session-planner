@@ -55,6 +55,7 @@ export function TacticalBoardEditor({ initialSession, onSave, embedded }: Tactic
   const [sequenceBuilderActive, setSequenceBuilderActive] = useState(false);
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
   const [selectedActionId, setSelectedActionId] = useState<string | null>(null);
+  const [pathDrawingMode, setPathDrawingMode] = useState<{ active: boolean; actionType: ActionType; fromPlayerId: string } | null>(null);
 
   const {
     session,
@@ -465,6 +466,52 @@ export function TacticalBoardEditor({ initialSession, onSave, embedded }: Tactic
     [activeSequence]
   );
 
+  const handleStartPathDrawing = useCallback(
+    (actionType: ActionType) => {
+      if (!activeSequence) return;
+
+      const fromPlayerId = selectedPlayerId || getCurrentBallHolder(activeSequence);
+      if (!fromPlayerId) {
+        alert('No player selected to perform this action');
+        return;
+      }
+
+      setPathDrawingMode({ active: true, actionType, fromPlayerId });
+    },
+    [activeSequence, selectedPlayerId]
+  );
+
+  const handlePathComplete = useCallback(
+    (actionType: ActionType, fromPlayerId: string, points: { x: number; y: number }[]) => {
+      if (!activeSequence || points.length < 2) {
+        setPathDrawingMode(null);
+        return;
+      }
+
+      // Create action with path data
+      const updatedSequence = addActionToSequence(
+        activeSequence,
+        actionType,
+        fromPlayerId,
+        undefined,
+        points
+      );
+
+      const next = {
+        ...screenState,
+        sequences: screenState.sequences.map((s) =>
+          s.sequence_id === updatedSequence.sequence_id ? updatedSequence : s
+        ),
+      };
+      updateScreenState(activeScreenIndex, next);
+      history.push(next);
+
+      // Clear path drawing mode
+      setPathDrawingMode(null);
+    },
+    [activeSequence, screenState, activeScreenIndex, updateScreenState, history]
+  );
+
   const selectedAction = selectedActionId && activeSequence
     ? activeSequence.actions.find((a) => a.action_id === selectedActionId) || null
     : null;
@@ -575,6 +622,7 @@ export function TacticalBoardEditor({ initialSession, onSave, embedded }: Tactic
             onSelectSequence={handleSelectSequence}
             onPlaySequence={handlePlaySequence}
             onUpdateSequenceTitle={handleUpdateSequenceTitle}
+            onStartPathDrawing={handleStartPathDrawing}
           />
           <PlayerPalette onAddPlayer={handleAddPlayer} nextNumbers={nextNumbers} />
           <FormationSelector
@@ -620,6 +668,8 @@ export function TacticalBoardEditor({ initialSession, onSave, embedded }: Tactic
           onPlayerClick={handlePlayerClick}
           selectedPlayerId={selectedPlayerId}
           onArrowClickProp={handleArrowClick}
+          pathDrawingMode={pathDrawingMode}
+          onPathComplete={handlePathComplete}
         />
       </div>
 
