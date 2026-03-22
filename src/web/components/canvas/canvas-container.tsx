@@ -58,6 +58,9 @@ interface CanvasContainerProps {
   drawStrokeWidth: number;
   animState: AnimationState;
   concurrentMode: boolean;
+  sequenceBuilderActive?: boolean;
+  onPlayerClick?: (playerId: string) => void;
+  selectedPlayerId?: string | null;
 }
 
 export function CanvasContainer({
@@ -73,6 +76,9 @@ export function CanvasContainer({
   drawStrokeWidth,
   animState,
   concurrentMode,
+  sequenceBuilderActive = false,
+  onPlayerClick: onPlayerClickProp,
+  selectedPlayerId,
 }: CanvasContainerProps) {
 
   // Ball drag (free ball only)
@@ -320,9 +326,12 @@ export function CanvasContainer({
       if (activeTool === 'delete') {
         e.stopPropagation();
         handleDelete(player.id);
+      } else if (sequenceBuilderActive && onPlayerClickProp) {
+        e.stopPropagation();
+        onPlayerClickProp(player.id);
       }
     },
-    [activeTool, handleDelete]
+    [activeTool, handleDelete, sequenceBuilderActive, onPlayerClickProp]
   );
 
   const handlePlayerDoubleClick = useCallback(
@@ -437,7 +446,11 @@ export function CanvasContainer({
           })()}
 
           <PlayerLayer
-            players={state.players}
+            players={state.players.map((p) => ({
+              ...p,
+              selected: sequenceBuilderActive && selectedPlayerId === p.id,
+              hasBall: state.ball.ownerId === p.id,
+            }))}
             ballOwnerId={state.ball.ownerId}
             onPlayerMouseDown={activeTool === 'select' ? handlePlayerMouseDown : undefined}
             onPlayerClick={handlePlayerClick}

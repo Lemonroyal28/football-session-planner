@@ -93,6 +93,19 @@ export function PlayerToken({ player, hasBall, onMouseDown, onClick, onDoubleCli
           style={{ pointerEvents: 'none' }}
         />
       )}
+      {/* Selection ring when player is selected in sequence builder */}
+      {player.selected && !isMannequin && (
+        <circle
+          cx={player.x}
+          cy={player.y}
+          r={26}
+          fill="none"
+          stroke="#3b82f6"
+          strokeWidth={3}
+          opacity={0.8}
+          style={{ pointerEvents: 'none' }}
+        />
+      )}
     </g>
   );
 }

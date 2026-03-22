@@ -4,6 +4,7 @@ import { useRef, useState, useCallback, useEffect } from 'react';
 import type { ActiveTool } from '../../../types/tools';
 import type { ScreenState, CanvasPlayer, ConeColor } from '../../../types/canvas';
 import type { Session } from '../../../types/session';
+import type { ActionType } from '../../../types/tactical-sequence';
 import { useSessionStore } from '../../store/session-store';
 import { useHistory } from '../../hooks/use-history';
 import { useKeyboardShortcuts } from '../../hooks/use-keyboard-shortcuts';
@@ -18,11 +19,13 @@ import { ConePalette } from '../sidebar/cone-palette';
 import { DrawOptions } from '../sidebar/draw-options';
 import { ZonePalette } from '../sidebar/zone-palette';
 import { FormationSelector, type PlanningMode } from '../sidebar/formation-selector';
+import { SequenceBuilderPanel } from '../sidebar/sequence-builder-panel';
 import { ScreenTabs } from '../session/screen-tabs';
 import { NotesPanel } from '../notes/notes-panel';
 import { ExportMenu } from '../export/export-menu';
 import { exportPNG, exportFSP, generateShareURL, parseShareURL } from '../../lib/export';
 import { saveSession, loadDraft } from '../../lib/storage';
+import { createTacticalSequence, addActionToSequence, getCurrentBallHolder } from '../../lib/sequence-helpers';
 import { Save } from 'lucide-react';
 
 interface TacticalBoardEditorProps {
@@ -44,6 +47,10 @@ export function TacticalBoardEditor({ initialSession, onSave, embedded }: Tactic
   const [planningMode, setPlanningMode] = useState<PlanningMode>('match');
   const [concurrentMode, setConcurrentMode] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+
+  // Sequence builder state
+  const [sequenceBuilderActive, setSequenceBuilderActive] = useState(false);
+  const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
 
   const {
     session,
@@ -221,6 +228,128 @@ export function TacticalBoardEditor({ initialSession, onSave, embedded }: Tactic
     }
   }, [anim.playing, play, stop]);
 
+  // Sequence builder handlers
+  const activeSequence = screenState.activeSequenceId
+    ? screenState.sequences.find((s) => s.sequence_id === screenState.activeSequenceId) || null
+    : null;
+
+  const selectedPlayer = selectedPlayerId
+    ? screenState.players.find((p) => p.id === selectedPlayerId) || null
+    : null;
+
+  const ballHolderId = activeSequence
+    ? getCurrentBallHolder(activeSequence)
+    : screenState.ball.ownerId;
+
+  const ballHolder = ballHolderId
+    ? screenState.players.find((p) => p.id === ballHolderId) || null
+    : null;
+
+  const handleToggleSequenceBuilder = useCallback(() => {
+    setSequenceBuilderActive((prev) => !prev);
+    if (!sequenceBuilderActive) {
+      // When activating, clear selection
+      setSelectedPlayerId(null);
+    } else {
+      // When deactivating, finish active sequence
+      if (screenState.activeSequenceId) {
+        const next = { ...screenState, activeSequenceId: null };
+        updateScreenState(activeScreenIndex, next);
+        history.push(next);
+      }
+    }
+  }, [sequenceBuilderActive, screenState, activeScreenIndex, updateScreenState, history]);
+
+  const handlePlayerClick = useCallback(
+    (playerId: string) => {
+      if (!sequenceBuilderActive) return;
+      setSelectedPlayerId(playerId);
+    },
+    [sequenceBuilderActive]
+  );
+
+  const handleCreateSequence = useCallback(
+    (startingPlayerId: string, ballHolderId: string) => {
+      const newSequence = createTacticalSequence(startingPlayerId, ballHolderId);
+      const next = {
+        ...screenState,
+        sequences: [...screenState.sequences, newSequence],
+        activeSequenceId: newSequence.sequence_id,
+      };
+      updateScreenState(activeScreenIndex, next);
+      history.push(next);
+    },
+    [screenState, activeScreenIndex, updateScreenState, history]
+  );
+
+  const handleAddAction = useCallback(
+    (actionType: ActionType, toPlayerId?: string) => {
+      if (!activeSequence) return;
+
+      const fromPlayerId = selectedPlayerId || getCurrentBallHolder(activeSequence);
+      if (!fromPlayerId) {
+        alert('No player selected to perform this action');
+        return;
+      }
+
+      const updatedSequence = addActionToSequence(
+        activeSequence,
+        actionType,
+        fromPlayerId,
+        toPlayerId
+      );
+
+      const next = {
+        ...screenState,
+        sequences: screenState.sequences.map((s) =>
+          s.sequence_id === updatedSequence.sequence_id ? updatedSequence : s
+        ),
+      };
+      updateScreenState(activeScreenIndex, next);
+      history.push(next);
+
+      // Clear selection after adding pass
+      if (actionType === 'pass') {
+        setSelectedPlayerId(null);
+      }
+    },
+    [activeSequence, selectedPlayerId, screenState, activeScreenIndex, updateScreenState, history]
+  );
+
+  const handleDeleteSequence = useCallback(
+    (sequenceId: string) => {
+      const next = {
+        ...screenState,
+        sequences: screenState.sequences.filter((s) => s.sequence_id !== sequenceId),
+        activeSequenceId: screenState.activeSequenceId === sequenceId ? null : screenState.activeSequenceId,
+      };
+      updateScreenState(activeScreenIndex, next);
+      history.push(next);
+    },
+    [screenState, activeScreenIndex, updateScreenState, history]
+  );
+
+  const handleSelectSequence = useCallback(
+    (sequenceId: string | null) => {
+      const next = {
+        ...screenState,
+        activeSequenceId: sequenceId,
+      };
+      updateScreenState(activeScreenIndex, next);
+      history.push(next);
+      setSelectedPlayerId(null);
+    },
+    [screenState, activeScreenIndex, updateScreenState, history]
+  );
+
+  const handlePlaySequence = useCallback(
+    (sequenceId: string) => {
+      // TODO: Implement sequence animation
+      console.log('Play sequence:', sequenceId);
+    },
+    []
+  );
+
   if (!currentScreen) return null;
 
   return (
@@ -312,6 +441,20 @@ export function TacticalBoardEditor({ initialSession, onSave, embedded }: Tactic
       {/* Main area */}
       <div className="flex flex-1 overflow-hidden">
         <aside className="w-56 shrink-0 bg-[#0f172a] border-r border-white/10 p-4 space-y-6 overflow-y-auto">
+          <SequenceBuilderPanel
+            active={sequenceBuilderActive}
+            onToggle={handleToggleSequenceBuilder}
+            activeSequence={activeSequence}
+            sequences={screenState.sequences}
+            players={screenState.players}
+            selectedPlayer={selectedPlayer}
+            ballHolder={ballHolder}
+            onCreateSequence={handleCreateSequence}
+            onAddAction={handleAddAction}
+            onDeleteSequence={handleDeleteSequence}
+            onSelectSequence={handleSelectSequence}
+            onPlaySequence={handlePlaySequence}
+          />
           <PlayerPalette onAddPlayer={handleAddPlayer} nextNumbers={nextNumbers} />
           <FormationSelector
             onApplyFormation={handleApplyFormation}
@@ -352,6 +495,9 @@ export function TacticalBoardEditor({ initialSession, onSave, embedded }: Tactic
           drawStrokeWidth={drawStrokeWidth}
           animState={anim}
           concurrentMode={concurrentMode}
+          sequenceBuilderActive={sequenceBuilderActive}
+          onPlayerClick={handlePlayerClick}
+          selectedPlayerId={selectedPlayerId}
         />
       </div>
 

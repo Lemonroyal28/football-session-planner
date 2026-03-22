@@ -50,6 +50,8 @@ export function createEmptyScreenState(): ScreenState {
     scribbles: [],
     annotations: [],
     ball: { x: 525, y: 340, ownerId: null },
+    sequences: [],
+    activeSequenceId: null,
   };
 }
 
@@ -63,6 +65,8 @@ export function createDefaultScreenState(): ScreenState {
     scribbles: [],
     annotations: [],
     ball: { x: 525, y: 340, ownerId: null },
+    sequences: [],
+    activeSequenceId: null,
   };
 }
 

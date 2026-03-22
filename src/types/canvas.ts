@@ -1,4 +1,5 @@
 import type { PlayerType } from './pitch';
+import type { TacticalSequence } from './tactical-sequence';
 
 export interface CanvasPlayer {
   id: string;
@@ -7,6 +8,10 @@ export interface CanvasPlayer {
   type: PlayerType;
   number: number;
   name: string;
+  /** Whether this player is currently selected for sequence building */
+  selected?: boolean;
+  /** Whether this player currently has the ball */
+  hasBall?: boolean;
 }
 
 export type ArrowStyle = 'pass' | 'run' | 'dribble' | 'movement' | 'pressing' | 'overlap';
@@ -95,4 +100,8 @@ export interface ScreenState {
   scribbles: CanvasScribble[];
   annotations: CanvasAnnotation[];
   ball: CanvasBall;
+  /** Tactical sequences (player-linked action chains) */
+  sequences: TacticalSequence[];
+  /** Active sequence being built */
+  activeSequenceId: string | null;
 }
