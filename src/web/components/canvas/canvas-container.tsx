@@ -62,6 +62,7 @@ interface CanvasContainerProps {
   sequenceBuilderActive?: boolean;
   onPlayerClick?: (playerId: string) => void;
   selectedPlayerId?: string | null;
+  onArrowClickProp?: (arrowId: string) => void;
 }
 
 export function CanvasContainer({
@@ -80,6 +81,7 @@ export function CanvasContainer({
   sequenceBuilderActive = false,
   onPlayerClick: onPlayerClickProp,
   selectedPlayerId,
+  onArrowClickProp,
 }: CanvasContainerProps) {
 
   // Ball drag (free ball only)
@@ -350,9 +352,12 @@ export function CanvasContainer({
       if (activeTool === 'delete') {
         e.stopPropagation();
         handleDelete(arrow.id);
+      } else if (sequenceBuilderActive && onArrowClickProp) {
+        e.stopPropagation();
+        onArrowClickProp(arrow.id);
       }
     },
-    [activeTool, handleDelete]
+    [activeTool, handleDelete, sequenceBuilderActive, onArrowClickProp]
   );
 
   const handleZoneClick = useCallback(

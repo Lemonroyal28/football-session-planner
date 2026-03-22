@@ -20,12 +20,14 @@ import { DrawOptions } from '../sidebar/draw-options';
 import { ZonePalette } from '../sidebar/zone-palette';
 import { FormationSelector, type PlanningMode } from '../sidebar/formation-selector';
 import { SequenceBuilderPanel } from '../sidebar/sequence-builder-panel';
+import { ActionInspector } from '../sidebar/action-inspector';
 import { ScreenTabs } from '../session/screen-tabs';
 import { NotesPanel } from '../notes/notes-panel';
 import { ExportMenu } from '../export/export-menu';
 import { exportPNG, exportFSP, generateShareURL, parseShareURL } from '../../lib/export';
 import { saveSession, loadDraft } from '../../lib/storage';
 import { createTacticalSequence, addActionToSequence, getCurrentBallHolder } from '../../lib/sequence-helpers';
+import { sequenceToArrows } from '../../lib/sequence-to-arrows';
 import { Save } from 'lucide-react';
 
 interface TacticalBoardEditorProps {
@@ -51,6 +53,7 @@ export function TacticalBoardEditor({ initialSession, onSave, embedded }: Tactic
   // Sequence builder state
   const [sequenceBuilderActive, setSequenceBuilderActive] = useState(false);
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
+  const [selectedActionId, setSelectedActionId] = useState<string | null>(null);
 
   const {
     session,
@@ -344,10 +347,43 @@ export function TacticalBoardEditor({ initialSession, onSave, embedded }: Tactic
 
   const handlePlaySequence = useCallback(
     (sequenceId: string) => {
-      // TODO: Implement sequence animation
-      console.log('Play sequence:', sequenceId);
+      // Find the sequence
+      const sequence = screenState.sequences.find((s) => s.sequence_id === sequenceId);
+      if (!sequence || sequence.actions.length === 0) return;
+
+      // Convert sequence to arrows
+      const sequenceArrows = sequenceToArrows(sequence, screenState.players);
+
+      // Store original state
+      const originalArrows = screenState.arrows;
+      const originalActiveId = screenState.activeSequenceId;
+
+      // Temporarily add sequence arrows to state for animation
+      const next = {
+        ...screenState,
+        arrows: [...originalArrows, ...sequenceArrows],
+        activeSequenceId: sequenceId,
+      };
+      updateScreenState(activeScreenIndex, next);
+
+      // Wait a frame for state update, then play animation
+      setTimeout(() => {
+        play();
+
+        // After animation completes, restore original state
+        const duration = 1200 * sequenceArrows.length; // STEP_DURATION_MS * arrow count
+        setTimeout(() => {
+          const restored = {
+            ...screenState,
+            arrows: originalArrows,
+            activeSequenceId: originalActiveId,
+          };
+          updateScreenState(activeScreenIndex, restored);
+          stop();
+        }, duration + 100);
+      }, 16);
     },
-    []
+    [screenState, activeScreenIndex, updateScreenState, play, stop]
   );
 
   const handleUpdateSequenceTitle = useCallback(
@@ -363,6 +399,59 @@ export function TacticalBoardEditor({ initialSession, onSave, embedded }: Tactic
     },
     [screenState, activeScreenIndex, updateScreenState, history]
   );
+
+  const handleUpdateAction = useCallback(
+    (actionId: string, updates: Partial<import('../../../types/tactical-sequence').TacticalAction>) => {
+      const next = {
+        ...screenState,
+        sequences: screenState.sequences.map((seq) => ({
+          ...seq,
+          actions: seq.actions.map((action) =>
+            action.action_id === actionId
+              ? { ...action, ...updates }
+              : action
+          ),
+          updated_at: new Date().toISOString(),
+        })),
+      };
+      updateScreenState(activeScreenIndex, next);
+      history.push(next);
+    },
+    [screenState, activeScreenIndex, updateScreenState, history]
+  );
+
+  const handleDeleteAction = useCallback(
+    (actionId: string) => {
+      const next = {
+        ...screenState,
+        sequences: screenState.sequences.map((seq) => ({
+          ...seq,
+          actions: seq.actions.filter((action) => action.action_id !== actionId),
+          updated_at: new Date().toISOString(),
+        })),
+      };
+      updateScreenState(activeScreenIndex, next);
+      history.push(next);
+    },
+    [screenState, activeScreenIndex, updateScreenState, history]
+  );
+
+  const handleArrowClick = useCallback(
+    (arrowId: string) => {
+      // Check if this arrow belongs to the active sequence
+      if (activeSequence) {
+        const action = activeSequence.actions.find((a) => a.action_id === arrowId);
+        if (action) {
+          setSelectedActionId(arrowId);
+        }
+      }
+    },
+    [activeSequence]
+  );
+
+  const selectedAction = selectedActionId && activeSequence
+    ? activeSequence.actions.find((a) => a.action_id === selectedActionId) || null
+    : null;
 
   if (!currentScreen) return null;
 
@@ -513,6 +602,7 @@ export function TacticalBoardEditor({ initialSession, onSave, embedded }: Tactic
           sequenceBuilderActive={sequenceBuilderActive}
           onPlayerClick={handlePlayerClick}
           selectedPlayerId={selectedPlayerId}
+          onArrowClickProp={handleArrowClick}
         />
       </div>
 
@@ -522,6 +612,17 @@ export function TacticalBoardEditor({ initialSession, onSave, embedded }: Tactic
           notes={currentScreen.notes}
           onChange={(notes) => updateScreenNotes(activeScreenIndex, notes)}
           screenName={currentScreen.name}
+        />
+      )}
+
+      {/* Action Inspector Modal */}
+      {selectedAction && (
+        <ActionInspector
+          action={selectedAction}
+          players={screenState.players}
+          onClose={() => setSelectedActionId(null)}
+          onUpdate={handleUpdateAction}
+          onDelete={handleDeleteAction}
         />
       )}
     </div>
