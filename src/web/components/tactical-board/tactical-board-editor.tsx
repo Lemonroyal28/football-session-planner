@@ -4,7 +4,7 @@ import { useRef, useState, useCallback, useEffect } from 'react';
 import type { ActiveTool } from '../../../types/tools';
 import type { ScreenState, CanvasPlayer, ConeColor } from '../../../types/canvas';
 import type { Session } from '../../../types/session';
-import type { ActionType } from '../../../types/tactical-sequence';
+import type { ActionType, LineStyle } from '../../../types/tactical-sequence';
 import { useSessionStore } from '../../store/session-store';
 import { useHistory } from '../../hooks/use-history';
 import { useKeyboardShortcuts } from '../../hooks/use-keyboard-shortcuts';
@@ -50,6 +50,10 @@ export function TacticalBoardEditor({ initialSession, onSave, embedded }: Tactic
   const [planningMode, setPlanningMode] = useState<PlanningMode>('match');
   const [concurrentMode, setConcurrentMode] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+
+  // Football action drawing state
+  const [selectedActionType, setSelectedActionType] = useState<ActionType>('pass');
+  const [selectedLineStyle, setSelectedLineStyle] = useState<LineStyle>('straight');
 
   // Sequence builder state
   const [sequenceBuilderActive, setSequenceBuilderActive] = useState(false);
@@ -599,6 +603,10 @@ export function TacticalBoardEditor({ initialSession, onSave, embedded }: Tactic
             hasArrows={screenState.arrows.length > 0}
             concurrentMode={concurrentMode}
             onToggleConcurrent={handleToggleConcurrent}
+            selectedActionType={selectedActionType}
+            selectedLineStyle={selectedLineStyle}
+            onActionTypeChange={setSelectedActionType}
+            onLineStyleChange={setSelectedLineStyle}
           />
           </div>
 
@@ -638,6 +646,10 @@ export function TacticalBoardEditor({ initialSession, onSave, embedded }: Tactic
             hasArrows={screenState.arrows.length > 0}
             concurrentMode={concurrentMode}
             onToggleConcurrent={handleToggleConcurrent}
+            selectedActionType={selectedActionType}
+            selectedLineStyle={selectedLineStyle}
+            onActionTypeChange={setSelectedActionType}
+            onLineStyleChange={setSelectedLineStyle}
           />
         </div>
       )}

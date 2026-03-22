@@ -8,6 +8,8 @@
 
 export type ActionType = 'pass' | 'dribble' | 'run' | 'shot' | 'movement' | 'pressing' | 'overlap';
 
+export type LineStyle = 'straight' | 'curved' | 'free_draw';
+
 export type TimingRelation = 'before' | 'during' | 'after' | 'simultaneous';
 
 export type BallState = 'with_player' | 'in_flight' | 'loose';
@@ -28,6 +30,9 @@ export interface TacticalAction {
 
   /** Type of football action */
   action_type: ActionType;
+
+  /** Drawing style for this action */
+  line_style: LineStyle;
 
   /** Player who initiates/performs this action */
   from_player_id: string;

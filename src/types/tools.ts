@@ -6,6 +6,7 @@ export type ActiveTool =
   | 'arrow-movement'
   | 'arrow-pressing'
   | 'arrow-overlap'
+  | 'arrow-action' // New unified football action drawing tool
   | 'zone'
   | 'cone'
   | 'draw'

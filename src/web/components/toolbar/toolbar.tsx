@@ -2,9 +2,6 @@
 
 import {
   MousePointer2,
-  MoveRight,
-  Footprints,
-  Waypoints,
   Square,
   Trash2,
   Undo2,
@@ -14,15 +11,16 @@ import {
   Pencil,
   Play,
   StopCircle,
-  UserRound,
-  Shield,
-  TrendingUp,
   Link,
   Info,
+  Pen,
 } from 'lucide-react';
 import type { ActiveTool } from '../../../types/tools';
+import type { ActionType, LineStyle } from '../../../types/tactical-sequence';
 import { ToolButton } from './tool-button';
 import { HelpModal } from './help-modal';
+import { ActionTypeDropdown } from './action-type-dropdown';
+import { LineStyleDropdown } from './line-style-dropdown';
 import { useState } from 'react';
 
 interface ToolbarProps {
@@ -39,6 +37,10 @@ interface ToolbarProps {
   hasArrows: boolean;
   concurrentMode: boolean;
   onToggleConcurrent: () => void;
+  selectedActionType: ActionType;
+  selectedLineStyle: LineStyle;
+  onActionTypeChange: (actionType: ActionType) => void;
+  onLineStyleChange: (lineStyle: LineStyle) => void;
 }
 
 export function Toolbar({
@@ -55,8 +57,12 @@ export function Toolbar({
   hasArrows,
   concurrentMode,
   onToggleConcurrent,
+  selectedActionType,
+  selectedLineStyle,
+  onActionTypeChange,
+  onLineStyleChange,
 }: ToolbarProps) {
-  const isArrowTool = activeTool.startsWith('arrow-');
+  const isDrawMode = activeTool === 'arrow-action';
   const [showHelp, setShowHelp] = useState(false);
 
   return (
@@ -80,50 +86,20 @@ export function Toolbar({
 
       <div className="w-px h-6 bg-white/20 mx-1" />
 
-      <ToolButton
-        icon={<MoveRight size={16} />}
-        label="Pass"
-        shortcut="P"
-        active={activeTool === 'arrow-pass'}
-        onClick={() => setTool('arrow-pass')}
-      />
-      <ToolButton
-        icon={<Footprints size={16} />}
-        label="Run"
-        shortcut="R"
-        active={activeTool === 'arrow-run'}
-        onClick={() => setTool('arrow-run')}
-      />
-      <ToolButton
-        icon={<Waypoints size={16} />}
-        label="Dribble"
-        shortcut="D"
-        active={activeTool === 'arrow-dribble'}
-        onClick={() => setTool('arrow-dribble')}
-      />
-      <ToolButton
-        icon={<UserRound size={16} />}
-        label="Movement"
-        shortcut="M"
-        active={activeTool === 'arrow-movement'}
-        onClick={() => setTool('arrow-movement')}
-      />
-      <ToolButton
-        icon={<Shield size={16} />}
-        label="Pressing"
-        shortcut="E"
-        active={activeTool === 'arrow-pressing'}
-        onClick={() => setTool('arrow-pressing')}
-      />
-      <ToolButton
-        icon={<TrendingUp size={16} />}
-        label="Overlap"
-        shortcut="O"
-        active={activeTool === 'arrow-overlap'}
-        onClick={() => setTool('arrow-overlap')}
-      />
+      {/* Football Action Drawing System */}
+      <div className="flex items-center gap-2 px-2">
+        <ActionTypeDropdown value={selectedActionType} onChange={onActionTypeChange} />
+        <LineStyleDropdown value={selectedLineStyle} onChange={onLineStyleChange} />
+        <ToolButton
+          icon={<Pen size={16} />}
+          label="Draw Action"
+          shortcut="A"
+          active={isDrawMode}
+          onClick={() => setTool(isDrawMode ? 'select' : 'arrow-action')}
+        />
+      </div>
 
-      {isArrowTool && (
+      {isDrawMode && (
         <>
           <div className="w-px h-6 bg-white/20 mx-1" />
           <ToolButton
