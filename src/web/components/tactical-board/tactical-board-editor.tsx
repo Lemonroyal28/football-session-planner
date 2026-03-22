@@ -350,6 +350,20 @@ export function TacticalBoardEditor({ initialSession, onSave, embedded }: Tactic
     []
   );
 
+  const handleUpdateSequenceTitle = useCallback(
+    (sequenceId: string, title: string) => {
+      const next = {
+        ...screenState,
+        sequences: screenState.sequences.map((s) =>
+          s.sequence_id === sequenceId ? { ...s, title, updated_at: new Date().toISOString() } : s
+        ),
+      };
+      updateScreenState(activeScreenIndex, next);
+      history.push(next);
+    },
+    [screenState, activeScreenIndex, updateScreenState, history]
+  );
+
   if (!currentScreen) return null;
 
   return (
@@ -454,6 +468,7 @@ export function TacticalBoardEditor({ initialSession, onSave, embedded }: Tactic
             onDeleteSequence={handleDeleteSequence}
             onSelectSequence={handleSelectSequence}
             onPlaySequence={handlePlaySequence}
+            onUpdateSequenceTitle={handleUpdateSequenceTitle}
           />
           <PlayerPalette onAddPlayer={handleAddPlayer} nextNumbers={nextNumbers} />
           <FormationSelector

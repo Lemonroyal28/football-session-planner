@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useCallback } from 'react';
-import { Play, Trash2, Edit3, Plus, User, Circle } from 'lucide-react';
+import { useState, useCallback, useMemo } from 'react';
+import { Play, Trash2, Edit3, Plus, User, Circle, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import type { TacticalSequence, ActionType } from '../../../types/tactical-sequence';
 import type { CanvasPlayer } from '../../../types/canvas';
+import { validateSequence } from '../../lib/sequence-validation';
 
 interface SequenceBuilderPanelProps {
   /** Whether sequence builder mode is active */
@@ -30,6 +31,8 @@ interface SequenceBuilderPanelProps {
   onSelectSequence: (sequenceId: string | null) => void;
   /** Play sequence animation */
   onPlaySequence: (sequenceId: string) => void;
+  /** Update sequence title */
+  onUpdateSequenceTitle: (sequenceId: string, title: string) => void;
 }
 
 export function SequenceBuilderPanel({
@@ -45,8 +48,15 @@ export function SequenceBuilderPanel({
   onDeleteSequence,
   onSelectSequence,
   onPlaySequence,
+  onUpdateSequenceTitle,
 }: SequenceBuilderPanelProps) {
   const [showSequenceList, setShowSequenceList] = useState(false);
+
+  // Validate active sequence
+  const validation = useMemo(() => {
+    if (!activeSequence || activeSequence.actions.length === 0) return null;
+    return validateSequence(activeSequence, players, true);
+  }, [activeSequence, players]);
 
   const handleStartSequence = useCallback(() => {
     if (!selectedPlayer) {
@@ -148,12 +158,44 @@ export function SequenceBuilderPanel({
                 <input
                   value={activeSequence.title || 'Untitled Pattern'}
                   onChange={(e) => {
-                    // TODO: Add update sequence title handler
+                    onUpdateSequenceTitle(activeSequence.sequence_id, e.target.value);
                   }}
                   className="w-full bg-white/5 text-xs text-white/90 border border-white/10 rounded px-2 py-1 outline-none focus:border-emerald-500/50"
                   placeholder="Pattern name..."
                 />
               </div>
+
+              {/* Validation feedback */}
+              {validation && (
+                <div className="space-y-1">
+                  {validation.valid && validation.warnings.length === 0 && (
+                    <div className="flex items-start gap-2 p-2 bg-emerald-500/10 border border-emerald-500/30 rounded">
+                      <CheckCircle2 size={14} className="text-emerald-400 mt-0.5 shrink-0" />
+                      <span className="text-xs text-emerald-200">Sequence is valid</span>
+                    </div>
+                  )}
+                  {validation.warnings.length > 0 && (
+                    <div className="space-y-1">
+                      {validation.warnings.map((warning, i) => (
+                        <div key={i} className="flex items-start gap-2 p-2 bg-amber-500/10 border border-amber-500/30 rounded">
+                          <AlertTriangle size={14} className="text-amber-400 mt-0.5 shrink-0" />
+                          <span className="text-xs text-amber-200">{warning}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {validation.errors.length > 0 && (
+                    <div className="space-y-1">
+                      {validation.errors.map((error, i) => (
+                        <div key={i} className="flex items-start gap-2 p-2 bg-red-500/10 border border-red-500/30 rounded">
+                          <AlertTriangle size={14} className="text-red-400 mt-0.5 shrink-0" />
+                          <span className="text-xs text-red-200">{error}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Action Buttons */}
               <div className="space-y-2">

@@ -36,6 +36,7 @@ import { useScribbleDraw } from '../../hooks/use-scribble-draw';
 import type { AnimationState } from '../../hooks/use-animation';
 import { clientToSVG, clampToPitch } from '../../lib/svg-utils';
 import { newId } from '../../lib/id';
+import { getSequenceArrows } from '../../lib/sequence-to-arrows';
 
 function getViewBox(pitchType: PitchType): string {
   switch (pitchType) {
@@ -457,7 +458,13 @@ export function CanvasContainer({
             onPlayerDoubleClick={handlePlayerDoubleClick}
           />
 
-          <ArrowLayer arrows={state.arrows} onArrowClick={handleArrowClick} />
+          <ArrowLayer
+            arrows={[
+              ...state.arrows,
+              ...getSequenceArrows(state.sequences, state.players, state.activeSequenceId),
+            ]}
+            onArrowClick={handleArrowClick}
+          />
 
           {/* Animation overlay */}
           <AnimationOverlay basePlayersState={state.players} anim={animState} />

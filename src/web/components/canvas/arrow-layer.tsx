@@ -15,7 +15,7 @@ export function ArrowLayer({ arrows, onArrowClick }: ArrowLayerProps) {
         <ArrowElement
           key={arrow.id}
           arrow={arrow}
-          sequenceNumber={index + 1}
+          sequenceNumber={arrow.timingGroup ?? (index + 1)}
           onClick={onArrowClick}
         />
       ))}
