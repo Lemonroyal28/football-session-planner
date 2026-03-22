@@ -13,14 +13,16 @@ import {
   StopCircle,
   Link,
   Info,
-  Pen,
+  ArrowRight,
+  MoveRight,
+  Waves,
+  Navigation,
 } from 'lucide-react';
 import type { ActiveTool } from '../../../types/tools';
 import type { ActionType, LineStyle } from '../../../types/tactical-sequence';
 import { ToolButton } from './tool-button';
 import { HelpModal } from './help-modal';
-import { ActionTypeDropdown } from './action-type-dropdown';
-import { LineStyleDropdown } from './line-style-dropdown';
+import { ActionButtonGroup } from './action-button-group';
 import { useState } from 'react';
 
 interface ToolbarProps {
@@ -86,16 +88,59 @@ export function Toolbar({
 
       <div className="w-px h-6 bg-white/20 mx-1" />
 
-      {/* Football Action Drawing System */}
-      <div className="flex items-center gap-2 px-2">
-        <ActionTypeDropdown value={selectedActionType} onChange={onActionTypeChange} />
-        <LineStyleDropdown value={selectedLineStyle} onChange={onLineStyleChange} />
-        <ToolButton
-          icon={<Pen size={16} />}
-          label="Draw Action"
-          shortcut="A"
-          active={isDrawMode}
-          onClick={() => setTool(isDrawMode ? 'select' : 'arrow-action')}
+      {/* Football Action Buttons with Line Style Variants */}
+      <div className="flex items-center gap-1.5">
+        <ActionButtonGroup
+          actionType="pass"
+          icon={<ArrowRight size={16} />}
+          label="Pass"
+          color="text-emerald-400"
+          active={activeTool === 'arrow-action' && selectedActionType === 'pass'}
+          currentLineStyle={selectedLineStyle}
+          onSelect={(actionType, lineStyle) => {
+            onActionTypeChange(actionType);
+            onLineStyleChange(lineStyle);
+            setTool('arrow-action');
+          }}
+        />
+        <ActionButtonGroup
+          actionType="run"
+          icon={<MoveRight size={16} />}
+          label="Run"
+          color="text-blue-400"
+          active={activeTool === 'arrow-action' && selectedActionType === 'run'}
+          currentLineStyle={selectedLineStyle}
+          onSelect={(actionType, lineStyle) => {
+            onActionTypeChange(actionType);
+            onLineStyleChange(lineStyle);
+            setTool('arrow-action');
+          }}
+        />
+        <ActionButtonGroup
+          actionType="dribble"
+          icon={<Waves size={16} />}
+          label="Dribble"
+          color="text-amber-400"
+          active={activeTool === 'arrow-action' && selectedActionType === 'dribble'}
+          currentLineStyle={selectedLineStyle}
+          onSelect={(actionType, lineStyle) => {
+            onActionTypeChange(actionType);
+            onLineStyleChange(lineStyle);
+            setTool('arrow-action');
+          }}
+        />
+        <ActionButtonGroup
+          actionType="movement"
+          icon={<Navigation size={16} />}
+          label="Movement"
+          color="text-purple-400"
+          active={activeTool === 'arrow-action' && selectedActionType === 'movement'}
+          currentLineStyle={selectedLineStyle}
+          onSelect={(actionType, lineStyle) => {
+            onActionTypeChange(actionType);
+            onLineStyleChange(lineStyle);
+            setTool('arrow-action');
+          }}
         />
       </div>
 
