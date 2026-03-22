@@ -34,13 +34,15 @@ import { useArrowDraw } from '../../hooks/use-arrow-draw';
 import { useZoneDraw } from '../../hooks/use-zone-draw';
 import { useScribbleDraw } from '../../hooks/use-scribble-draw';
 import { usePathDraw } from '../../hooks/use-path-draw';
+import { useActionDraw } from '../../hooks/use-action-draw';
 import type { AnimationState } from '../../hooks/use-animation';
-import type { ActionType } from '../../../types/tactical-sequence';
+import type { ActionType, LineStyle } from '../../../types/tactical-sequence';
 import { clientToSVG, clampToPitch } from '../../lib/svg-utils';
 import { newId } from '../../lib/id';
 import { getSequenceArrows } from '../../lib/sequence-to-arrows';
 import { PathDrawPreview } from './path-draw-preview';
 import { PathEditHandles } from './path-edit-handles';
+import { ActionDrawPreview } from './action-draw-preview';
 
 function getViewBox(pitchType: PitchType): string {
   switch (pitchType) {
@@ -73,6 +75,8 @@ interface CanvasContainerProps {
   onPathPointDragStart?: (actionId: string, pointIndex: number) => void;
   onPathPointDrag?: (actionId: string, pointIndex: number, x: number, y: number) => void;
   onPathPointDragEnd?: () => void;
+  selectedActionType?: ActionType;
+  selectedLineStyle?: LineStyle;
 }
 
 export function CanvasContainer({
@@ -98,6 +102,8 @@ export function CanvasContainer({
   onPathPointDragStart,
   onPathPointDrag,
   onPathPointDragEnd,
+  selectedActionType = 'pass',
+  selectedLineStyle = 'straight',
 }: CanvasContainerProps) {
 
   // Ball drag (free ball only)
@@ -223,6 +229,65 @@ export function CanvasContainer({
 
   const arrowDraw = useArrowDraw(svgRef, arrowStyle || 'pass', onArrowCommit);
 
+  // Action draw (new unified drawing system)
+  const onActionCommit = useCallback(
+    (arrow: CanvasArrow, lineStyle: LineStyle, pathPoints?: { x: number; y: number }[]) => {
+      // Auto-detect nearest player
+      let fromPlayerId: string | undefined;
+      let bestDist = 40;
+      for (const p of state.players) {
+        const d = Math.hypot(p.x - arrow.x1, p.y - arrow.y1);
+        if (d < bestDist) {
+          fromPlayerId = p.id;
+          bestDist = d;
+        }
+      }
+
+      // Calculate timing group
+      const lastArrow = state.arrows[state.arrows.length - 1];
+      let timingGroup = 0;
+      if (lastArrow) {
+        timingGroup = lastArrow.isConcurrent ? (lastArrow.timingGroup ?? 0) : (lastArrow.timingGroup ?? 0) + 1;
+      }
+
+      // Store line_style and path_points in the arrow metadata
+      const enrichedArrow = {
+        ...arrow,
+        fromPlayerId,
+        isConcurrent: concurrentMode,
+        timingGroup,
+        lineStyle, // Store for future editing
+        pathPoints: pathPoints || [], // Store path points
+      };
+
+      // Auto-transfer ball on pass
+      let nextBall = state.ball;
+      if (arrow.style === 'pass' && fromPlayerId && state.ball.ownerId === fromPlayerId) {
+        let targetPlayerId: string | null = null;
+        let targetDist = 40;
+        for (const p of state.players) {
+          if (p.id === fromPlayerId) continue;
+          const d = Math.hypot(p.x - arrow.x2, p.y - arrow.y2);
+          if (d < targetDist) {
+            targetPlayerId = p.id;
+            targetDist = d;
+          }
+        }
+        if (targetPlayerId) {
+          const target = state.players.find((p) => p.id === targetPlayerId)!;
+          nextBall = { x: target.x, y: target.y, ownerId: targetPlayerId };
+        }
+      }
+
+      const next = { ...state, arrows: [...state.arrows, enrichedArrow], ball: nextBall };
+      onStateChange(next);
+      onHistoryPush(next);
+    },
+    [state, onStateChange, onHistoryPush, concurrentMode]
+  );
+
+  const actionDraw = useActionDraw(svgRef, selectedActionType, selectedLineStyle, onActionCommit);
+
   // Zone draw
   const onZoneCommit = useCallback(
     (zone: CanvasZone) => {
@@ -333,11 +398,12 @@ export function CanvasContainer({
       }
 
       if (activeTool === 'select') { handleBallDragMove(e); dragMouseMove(e); }
+      else if (activeTool === 'arrow-action') actionDraw.handleMouseMove(e);
       else if (arrowStyle) arrowDraw.handleMouseMove(e);
       else if (activeTool === 'zone') zoneDraw.handleMouseMove(e);
       else if (activeTool === 'draw') scribbleDraw.handleMouseMove(e);
     },
-    [activeTool, arrowStyle, handleBallDragMove, dragMouseMove, arrowDraw, zoneDraw, scribbleDraw, animState.playing, pathDraw, svgRef, draggingPathPoint, onPathPointDrag]
+    [activeTool, arrowStyle, handleBallDragMove, dragMouseMove, arrowDraw, actionDraw, zoneDraw, scribbleDraw, animState.playing, pathDraw, svgRef, draggingPathPoint, onPathPointDrag]
   );
 
   const handleSvgMouseUp = useCallback(
@@ -351,20 +417,31 @@ export function CanvasContainer({
         return;
       }
 
+      // Action draw free-draw mode
+      if (activeTool === 'arrow-action' && selectedLineStyle === 'free_draw' && actionDraw.state.isDrawing) {
+        actionDraw.endFreeDraw();
+        return;
+      }
+
       if (activeTool === 'select') { handleBallDragUp(); dragMouseUp(); }
       else if (activeTool === 'zone') zoneDraw.handleMouseUp(e);
       else if (activeTool === 'draw') scribbleDraw.handleMouseUp();
     },
-    [activeTool, handleBallDragUp, dragMouseUp, zoneDraw, scribbleDraw, animState.playing, draggingPathPoint, onPathPointDragEnd]
+    [activeTool, selectedLineStyle, actionDraw, handleBallDragUp, dragMouseUp, zoneDraw, scribbleDraw, animState.playing, draggingPathPoint, onPathPointDragEnd]
   );
 
   const handleSvgMouseDown = useCallback(
     (e: React.MouseEvent<SVGSVGElement>) => {
       if (animState.playing) return;
-      if (activeTool === 'zone') zoneDraw.handleMouseDown(e);
-      else if (activeTool === 'draw') scribbleDraw.handleMouseDown(e);
+      if (activeTool === 'arrow-action' && selectedLineStyle === 'free_draw') {
+        actionDraw.startFreeDraw(e);
+      } else if (activeTool === 'zone') {
+        zoneDraw.handleMouseDown(e);
+      } else if (activeTool === 'draw') {
+        scribbleDraw.handleMouseDown(e);
+      }
     },
-    [activeTool, zoneDraw, scribbleDraw, animState.playing]
+    [activeTool, selectedLineStyle, actionDraw, zoneDraw, scribbleDraw, animState.playing]
   );
 
   const handleSvgClick = useCallback(
@@ -382,10 +459,11 @@ export function CanvasContainer({
         return;
       }
 
-      if (arrowStyle) arrowDraw.handleClick(e);
+      if (activeTool === 'arrow-action') actionDraw.handleClick(e);
+      else if (arrowStyle) arrowDraw.handleClick(e);
       else if (activeTool === 'cone') handleConePlacement(e);
     },
-    [arrowStyle, arrowDraw, activeTool, handleConePlacement, animState.playing, pathDraw, svgRef]
+    [activeTool, actionDraw, arrowStyle, arrowDraw, handleConePlacement, animState.playing, pathDraw, svgRef]
   );
 
   // Ball assignment — double-click a player to give/remove ball
@@ -480,6 +558,7 @@ export function CanvasContainer({
     activeTool === 'zone' ? 'crosshair' :
     activeTool === 'cone' ? 'copy' :
     activeTool === 'draw' ? 'crosshair' :
+    activeTool === 'arrow-action' ? 'crosshair' :
     arrowStyle ? 'crosshair' :
     (dragging || ballDragging) ? 'grabbing' : 'default';
 
@@ -597,6 +676,19 @@ export function CanvasContainer({
 
           {/* Path drawing preview */}
           {pathDraw.state.isDrawing && <PathDrawPreview state={pathDraw.state} />}
+
+          {/* Action drawing preview */}
+          {activeTool === 'arrow-action' && (
+            <ActionDrawPreview
+              actionType={selectedActionType}
+              lineStyle={selectedLineStyle}
+              startPoint={actionDraw.state.startPoint}
+              endPoint={actionDraw.state.endPoint}
+              controlPoint={actionDraw.state.controlPoint}
+              pathPoints={actionDraw.state.pathPoints}
+              preview={actionDraw.state.preview}
+            />
+          )}
 
           {/* Path edit handles */}
           {editingPathActionId && (() => {

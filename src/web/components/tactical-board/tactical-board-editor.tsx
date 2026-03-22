@@ -735,6 +735,8 @@ export function TacticalBoardEditor({ initialSession, onSave, embedded }: Tactic
           onPathPointDragStart={handlePathPointDragStart}
           onPathPointDrag={handlePathPointDrag}
           onPathPointDragEnd={handlePathPointDragEnd}
+          selectedActionType={selectedActionType}
+          selectedLineStyle={selectedLineStyle}
         />
       </div>
 
