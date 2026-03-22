@@ -72,7 +72,8 @@ export function useActionDraw(
             style: actionType === 'pass' ? 'pass' : actionType === 'run' ? 'run' : actionType === 'dribble' ? 'dribble' : 'movement',
             color: getArrowColor(actionType),
           };
-          onComplete(arrow, lineStyle);
+          // Pass path points for straight line too (start and end)
+          onComplete(arrow, lineStyle, [current.startPoint, clamped]);
           setState({
             isDrawing: false,
             actionType,
@@ -108,14 +109,9 @@ export function useActionDraw(
             style: actionType === 'pass' ? 'pass' : actionType === 'run' ? 'run' : actionType === 'dribble' ? 'dribble' : 'movement',
             color: getArrowColor(actionType),
           };
-          // Convert bezier to path points for storage
-          const bezierPoints = generateBezierPoints(
-            current.startPoint,
-            current.controlPoint,
-            clamped,
-            10
-          );
-          onComplete(arrow, lineStyle, bezierPoints);
+          // Store control points for curved line: [start, control, end]
+          const curvePoints = [current.startPoint, current.controlPoint, clamped];
+          onComplete(arrow, lineStyle, curvePoints);
           setState({
             isDrawing: false,
             actionType,
