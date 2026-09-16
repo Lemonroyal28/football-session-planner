@@ -25,8 +25,44 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  // Just refresh the session — no auth redirects for now
-  await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const pathname = request.nextUrl.pathname;
+  const isAuthRoute = pathname.startsWith('/auth');
+  const isCallbackRoute = pathname.startsWith('/auth/callback');
+  const isOnboardingRoute = pathname.startsWith('/auth/onboarding');
+
+  if (!user && !isAuthRoute) {
+    const url = request.nextUrl.clone();
+    url.pathname = '/auth/login';
+    return NextResponse.redirect(url);
+  }
+
+  if (user && isAuthRoute && !isCallbackRoute && !isOnboardingRoute) {
+    const url = request.nextUrl.clone();
+    url.pathname = '/dashboard';
+    return NextResponse.redirect(url);
+  }
+
+  if (user && !isCallbackRoute) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('organization_id')
+      .eq('id', user.id)
+      .single();
+
+    if (!profile?.organization_id && !isOnboardingRoute) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/auth/onboarding';
+      return NextResponse.redirect(url);
+    }
+
+    if (profile?.organization_id && isOnboardingRoute) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/dashboard';
+      return NextResponse.redirect(url);
+    }
+  }
 
   return supabaseResponse;
 }

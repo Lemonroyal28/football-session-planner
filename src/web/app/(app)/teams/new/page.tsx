@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '../../../../lib/supabase/client';
+import { getCurrentOrganizationId } from '../../../../lib/organizations';
 
 export default function NewTeamPage() {
   const router = useRouter();
@@ -21,11 +22,18 @@ export default function NewTeamPage() {
 
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
+    const organizationId = await getCurrentOrganizationId(supabase);
+
+    if (!user || !organizationId) {
+      setLoading(false);
+      return;
+    }
 
     const { data, error } = await supabase
       .from('teams')
       .insert({
-        user_id: user?.id ?? null,
+        user_id: user.id,
+        organization_id: organizationId,
         name,
         age_group: ageGroup || null,
         level: level || null,

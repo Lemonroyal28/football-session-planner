@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { createClient } from '../../lib/supabase/client';
+import { getCurrentOrganizationId } from '../../lib/organizations';
 import { Clock, FileStack, Play } from 'lucide-react';
 
 interface TemplateCardProps {
@@ -23,12 +24,16 @@ export function TemplateCard({ template }: TemplateCardProps) {
   const handleUseTemplate = async () => {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
+    const organizationId = await getCurrentOrganizationId(supabase);
+
+    if (!user || !organizationId) return;
 
     // Create a new session from this template
     const { data: session } = await supabase
       .from('sessions')
       .insert({
-        user_id: user?.id ?? null,
+        user_id: user.id,
+        organization_id: organizationId,
         title: `${template.title} (copy)`,
         duration_minutes: template.duration_minutes,
         age_group: template.age_group,

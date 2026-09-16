@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '../../../../lib/supabase/client';
+import { getCurrentOrganizationId } from '../../../../lib/organizations';
 
 export default function NewSessionPage() {
   const router = useRouter();
@@ -34,11 +35,18 @@ export default function NewSessionPage() {
 
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
+    const organizationId = await getCurrentOrganizationId(supabase);
+
+    if (!user || !organizationId) {
+      setLoading(false);
+      return;
+    }
 
     const { data, error } = await supabase
       .from('sessions')
       .insert({
-        user_id: user?.id ?? null,
+        user_id: user.id,
+        organization_id: organizationId,
         title: title || 'Untitled Session',
         session_date: sessionDate || null,
         team_id: teamId || null,

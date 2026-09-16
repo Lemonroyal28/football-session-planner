@@ -1,18 +1,16 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useParams } from 'next/navigation';
 import { createClient } from '../../../../lib/supabase/client';
-import { ArrowLeft, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Pencil } from 'lucide-react';
 import Link from 'next/link';
+import { PlayerFormModal } from '../../../../components/players/player-form-modal';
+import { PlayerAvatar } from '../../../../components/players/player-avatar';
+import { OverallBadge } from '../../../../components/players/overall-badge';
+import { calculateAge, getPlayerPhotoUrl, type Player } from '../../../../lib/players';
 
-interface Player {
-  id: string;
-  name: string;
-  number: number | null;
-  preferred_positions: string[];
-  active: boolean;
-}
+type SortKey = 'number' | 'overall' | 'position';
 
 interface Team {
   id: string;
@@ -25,16 +23,15 @@ interface Team {
 
 export default function TeamDetailPage() {
   const params = useParams();
-  const router = useRouter();
   const [team, setTeam] = useState<Team | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
+  const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
 
-  // Add player form
-  const [showAddPlayer, setShowAddPlayer] = useState(false);
-  const [newName, setNewName] = useState('');
-  const [newNumber, setNewNumber] = useState('');
-  const [newPosition, setNewPosition] = useState('');
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingPlayer, setEditingPlayer] = useState<Player | undefined>(undefined);
+  const [sortKey, setSortKey] = useState<SortKey>('number');
+  const [positionFilter, setPositionFilter] = useState('');
 
   const loadData = useCallback(async () => {
     const supabase = createClient();
@@ -54,29 +51,17 @@ export default function TeamDetailPage() {
       .eq('team_id', id)
       .order('number', { ascending: true, nullsFirst: false });
 
-    if (playerData) setPlayers(playerData);
+    if (playerData) {
+      setPlayers(playerData);
+      const urlEntries = await Promise.all(
+        playerData.map(async (p) => [p.id, await getPlayerPhotoUrl(supabase, p.photo_url)] as const)
+      );
+      setPhotoUrls(Object.fromEntries(urlEntries.filter(([, url]) => url)));
+    }
     setLoading(false);
   }, [params.id]);
 
   useEffect(() => { loadData(); }, [loadData]);
-
-  const handleAddPlayer = async () => {
-    if (!newName.trim() || !team) return;
-    const supabase = createClient();
-
-    await supabase.from('players').insert({
-      team_id: team.id,
-      name: newName.trim(),
-      number: newNumber ? Number(newNumber) : null,
-      preferred_positions: newPosition ? [newPosition] : [],
-    });
-
-    setNewName('');
-    setNewNumber('');
-    setNewPosition('');
-    setShowAddPlayer(false);
-    loadData();
-  };
 
   const handleDeletePlayer = async (playerId: string) => {
     const supabase = createClient();
@@ -89,6 +74,38 @@ export default function TeamDetailPage() {
     await supabase.from('players').update({ active: !player.active }).eq('id', player.id);
     loadData();
   };
+
+  const openNewPlayerForm = () => {
+    setEditingPlayer(undefined);
+    setFormOpen(true);
+  };
+
+  const openEditPlayerForm = (player: Player) => {
+    setEditingPlayer(player);
+    setFormOpen(true);
+  };
+
+  const visiblePlayers = useMemo(() => {
+    let result = players;
+    if (positionFilter) {
+      result = result.filter(
+        (p) => p.primary_position === positionFilter || p.secondary_positions.includes(positionFilter as never)
+      );
+    }
+    return [...result].sort((a, b) => {
+      if (sortKey === 'overall') return (b.overall_rating ?? -1) - (a.overall_rating ?? -1);
+      if (sortKey === 'position') return (a.primary_position ?? '').localeCompare(b.primary_position ?? '');
+      return (a.number ?? 999) - (b.number ?? 999);
+    });
+  }, [players, sortKey, positionFilter]);
+
+  const positionOptions = useMemo(() => {
+    const set = new Set<string>();
+    players.forEach((p) => {
+      if (p.primary_position) set.add(p.primary_position);
+    });
+    return Array.from(set).sort();
+  }, [players]);
 
   if (loading) {
     return <div className="flex h-full items-center justify-center"><p className="text-white/40 text-sm">Loading...</p></div>;
@@ -121,66 +138,69 @@ export default function TeamDetailPage() {
 
       {/* Players table */}
       <div className="rounded-lg bg-white/5 border border-white/10 overflow-hidden">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
-          <h2 className="text-sm font-semibold text-white/70">Players ({players.length})</h2>
-          <button
-            onClick={() => setShowAddPlayer(!showAddPlayer)}
-            className="flex items-center gap-1 text-xs text-emerald-400 hover:text-emerald-300"
-          >
-            <Plus size={14} /> Add Player
-          </button>
-        </div>
-
-        {/* Add player form */}
-        {showAddPlayer && (
-          <div className="flex items-center gap-2 px-4 py-3 border-b border-white/10 bg-white/[0.02]">
-            <input
-              value={newNumber}
-              onChange={(e) => setNewNumber(e.target.value)}
-              type="number"
-              placeholder="#"
-              className="w-14 rounded-md bg-white/5 border border-white/10 px-2 py-1.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
-            />
-            <input
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              placeholder="Player name"
-              className="flex-1 rounded-md bg-white/5 border border-white/10 px-3 py-1.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
-              onKeyDown={(e) => e.key === 'Enter' && handleAddPlayer()}
-            />
-            <input
-              value={newPosition}
-              onChange={(e) => setNewPosition(e.target.value)}
-              placeholder="Position"
-              className="w-24 rounded-md bg-white/5 border border-white/10 px-2 py-1.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
-            />
-            <button
-              onClick={handleAddPlayer}
-              className="px-3 py-1.5 rounded-md bg-emerald-600 text-sm text-white hover:bg-emerald-500 transition-colors"
+        <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 gap-3">
+          <h2 className="text-sm font-semibold text-white/70 shrink-0">Players ({players.length})</h2>
+          <div className="flex items-center gap-2">
+            <select
+              value={positionFilter}
+              onChange={(e) => setPositionFilter(e.target.value)}
+              className="rounded-md bg-white/5 border border-white/10 px-2 py-1 text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
             >
-              Add
+              <option value="">All positions</option>
+              {positionOptions.map((pos) => (
+                <option key={pos} value={pos}>{pos}</option>
+              ))}
+            </select>
+            <select
+              value={sortKey}
+              onChange={(e) => setSortKey(e.target.value as SortKey)}
+              className="rounded-md bg-white/5 border border-white/10 px-2 py-1 text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+            >
+              <option value="number">Sort: #</option>
+              <option value="overall">Sort: Overall</option>
+              <option value="position">Sort: Position</option>
+            </select>
+            <button
+              onClick={openNewPlayerForm}
+              className="flex items-center gap-1 text-xs text-emerald-400 hover:text-emerald-300"
+            >
+              <Plus size={14} /> Add Player
             </button>
           </div>
-        )}
+        </div>
 
-        {players.length > 0 ? (
+        {visiblePlayers.length > 0 ? (
           <table className="w-full">
             <thead>
               <tr className="text-left text-xs text-white/40 border-b border-white/10">
                 <th className="px-4 py-2 w-14">#</th>
-                <th className="px-4 py-2">Name</th>
+                <th className="px-4 py-2">Player</th>
+                <th className="px-4 py-2">Age</th>
                 <th className="px-4 py-2">Position</th>
+                <th className="px-4 py-2 w-16">OVR</th>
                 <th className="px-4 py-2 w-20">Status</th>
-                <th className="px-4 py-2 w-16"></th>
+                <th className="px-4 py-2 w-20"></th>
               </tr>
             </thead>
             <tbody>
-              {players.map((player) => (
+              {visiblePlayers.map((player) => (
                 <tr key={player.id} className="border-b border-white/5 hover:bg-white/[0.02]">
                   <td className="px-4 py-2 text-sm text-white/50">{player.number ?? '-'}</td>
-                  <td className="px-4 py-2 text-sm text-white/80">{player.name}</td>
+                  <td className="px-4 py-2">
+                    <Link href={`/players/${player.id}`} className="flex items-center gap-2 group">
+                      <PlayerAvatar name={player.name} photoUrl={photoUrls[player.id] ?? null} size="sm" />
+                      <span className="text-sm text-white/80 group-hover:text-white transition-colors">{player.name}</span>
+                    </Link>
+                  </td>
+                  <td className="px-4 py-2 text-sm text-white/50">{calculateAge(player.date_of_birth) ?? '-'}</td>
                   <td className="px-4 py-2 text-sm text-white/50">
-                    {player.preferred_positions.join(', ') || '-'}
+                    {player.primary_position ?? '-'}
+                    {player.secondary_positions.length > 0 && (
+                      <span className="text-white/30"> / {player.secondary_positions.join(', ')}</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-2">
+                    <OverallBadge overall={player.overall_rating} size="sm" />
                   </td>
                   <td className="px-4 py-2">
                     <button
@@ -195,12 +215,20 @@ export default function TeamDetailPage() {
                     </button>
                   </td>
                   <td className="px-4 py-2">
-                    <button
-                      onClick={() => handleDeletePlayer(player.id)}
-                      className="text-white/20 hover:text-red-400 transition-colors"
-                    >
-                      <Trash2 size={14} />
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => openEditPlayerForm(player)}
+                        className="text-white/20 hover:text-white/70 transition-colors"
+                      >
+                        <Pencil size={14} />
+                      </button>
+                      <button
+                        onClick={() => handleDeletePlayer(player.id)}
+                        className="text-white/20 hover:text-red-400 transition-colors"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -212,6 +240,18 @@ export default function TeamDetailPage() {
           </div>
         )}
       </div>
+
+      {formOpen && team && (
+        <PlayerFormModal
+          teamId={team.id}
+          player={editingPlayer}
+          onClose={() => setFormOpen(false)}
+          onSaved={() => {
+            setFormOpen(false);
+            loadData();
+          }}
+        />
+      )}
     </div>
   );
 }

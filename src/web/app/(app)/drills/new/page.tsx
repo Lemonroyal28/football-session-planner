@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '../../../../lib/supabase/client';
+import { getCurrentOrganizationId } from '../../../../lib/organizations';
 
 const CATEGORIES = ['Passing', 'Shooting', 'Dribbling', 'Defending', 'Possession', 'Set Pieces', 'Fitness', 'Goalkeeping'];
 const AGE_GROUPS = ['U7', 'U8', 'U9', 'U10', 'U11', 'U12', 'U13', 'U14', 'U15', 'U16', 'U17', 'U18', 'U21', 'Senior'];
@@ -36,11 +37,18 @@ export default function NewDrillPage() {
 
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
+    const organizationId = await getCurrentOrganizationId(supabase);
+
+    if (!user || !organizationId) {
+      setLoading(false);
+      return;
+    }
 
     const { data, error } = await supabase
       .from('drills')
       .insert({
-        user_id: user?.id ?? null,
+        user_id: user.id,
+        organization_id: organizationId,
         title,
         category,
         age_groups: ageGroups,

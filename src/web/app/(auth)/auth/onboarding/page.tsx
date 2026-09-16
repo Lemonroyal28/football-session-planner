@@ -1,22 +1,17 @@
 'use client';
 
-import { Suspense, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import Link from 'next/link';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { createClient } from '../../../../lib/supabase/client';
 import { createOrganization, redeemInvite } from '../../../../lib/organizations';
 
 type JoinMode = 'create' | 'join';
 
-function SignupForm() {
+export default function OnboardingPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const [mode, setMode] = useState<JoinMode>(searchParams.get('invite') ? 'join' : 'create');
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [mode, setMode] = useState<JoinMode>('create');
   const [clubName, setClubName] = useState('');
-  const [inviteCode, setInviteCode] = useState(searchParams.get('invite') ?? '');
+  const [inviteCode, setInviteCode] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -26,22 +21,8 @@ function SignupForm() {
     setLoading(true);
 
     const supabase = createClient();
-    const { error: signUpError } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { full_name: fullName },
-      },
-    });
-
-    if (signUpError) {
-      setError(signUpError.message);
-      setLoading(false);
-      return;
-    }
-
     const result = mode === 'create'
-      ? await createOrganization(supabase, clubName || `${fullName}'s Club`)
+      ? await createOrganization(supabase, clubName || 'My Club')
       : await redeemInvite(supabase, inviteCode.trim());
 
     if (result.error) {
@@ -58,8 +39,8 @@ function SignupForm() {
     <div className="min-h-screen flex items-center justify-center bg-[#0f172a] px-4">
       <div className="w-full max-w-sm space-y-8">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-white">Football Session Planner</h1>
-          <p className="mt-2 text-sm text-white/60">Create your account</p>
+          <h1 className="text-2xl font-bold text-white">One more step</h1>
+          <p className="mt-2 text-sm text-white/60">Create a club or join one with an invite code</p>
         </div>
 
         <div className="flex rounded-md bg-white/5 border border-white/10 p-1">
@@ -89,52 +70,6 @@ function SignupForm() {
               {error}
             </div>
           )}
-
-          <div>
-            <label htmlFor="fullName" className="block text-sm font-medium text-white/70 mb-1">
-              Full Name
-            </label>
-            <input
-              id="fullName"
-              type="text"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              required
-              className="w-full rounded-md bg-white/5 border border-white/10 px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50"
-              placeholder="Your name"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-white/70 mb-1">
-              Email
-            </label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="w-full rounded-md bg-white/5 border border-white/10 px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50"
-              placeholder="coach@example.com"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-white/70 mb-1">
-              Password
-            </label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={6}
-              className="w-full rounded-md bg-white/5 border border-white/10 px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50"
-              placeholder="Min. 6 characters"
-            />
-          </div>
 
           {mode === 'create' ? (
             <div>
@@ -172,25 +107,10 @@ function SignupForm() {
             disabled={loading}
             className="w-full rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            {loading ? 'Creating account...' : 'Create Account'}
+            {loading ? 'Saving...' : mode === 'create' ? 'Create Club' : 'Join Club'}
           </button>
         </form>
-
-        <p className="text-center text-sm text-white/50">
-          Already have an account?{' '}
-          <Link href="/auth/login" className="text-emerald-400 hover:text-emerald-300">
-            Sign in
-          </Link>
-        </p>
       </div>
     </div>
-  );
-}
-
-export default function SignupPage() {
-  return (
-    <Suspense fallback={null}>
-      <SignupForm />
-    </Suspense>
   );
 }
