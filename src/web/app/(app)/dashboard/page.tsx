@@ -7,12 +7,23 @@ import {
   Users,
   Calendar,
 } from 'lucide-react';
+import { AccessDeniedBanner } from '../../../components/dashboard/access-denied-banner';
+import { ALL_MODULES, type ModuleKey } from '../../../lib/access/module-access';
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ access_denied?: string }>;
+}) {
+  const { access_denied } = await searchParams;
+  const deniedModule = ALL_MODULES.includes(access_denied as ModuleKey)
+    ? (access_denied as ModuleKey)
+    : null;
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  let profile: { full_name: string | null; club_name: string | null } | null = null;
+  let profile: { full_name: string | null; club_name: string | null; organization_id: string | null } | null = null;
   let upcomingSessions: { id: string; title: string; session_date: string; status: string; duration_minutes: number }[] = [];
   let recentSessions: { id: string; title: string; session_date: string | null; status: string; duration_minutes: number }[] = [];
   let sessionCount = 0;
@@ -22,7 +33,7 @@ export default async function DashboardPage() {
   if (user) {
     const { data: profileData } = await supabase
       .from('profiles')
-      .select('full_name, club_name')
+      .select('full_name, club_name, organization_id')
       .eq('id', user.id)
       .single();
     profile = profileData;
@@ -54,6 +65,14 @@ export default async function DashboardPage() {
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-8">
+      {deniedModule && user && profile?.organization_id && (
+        <AccessDeniedBanner
+          module={deniedModule}
+          organizationId={profile.organization_id}
+          profileId={user.id}
+        />
+      )}
+
       {/* Welcome */}
       <div>
         <h1 className="text-2xl font-bold text-white">

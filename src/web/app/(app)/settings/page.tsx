@@ -3,8 +3,9 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '../../../lib/supabase/client';
 import { TeamTab } from '../../../components/settings/team-tab';
+import { AccessTab } from '../../../components/settings/access-tab';
 
-type Tab = 'account' | 'team' | 'planning' | 'preferences';
+type Tab = 'account' | 'team' | 'access' | 'planning' | 'preferences';
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<Tab>('account');
@@ -90,6 +91,7 @@ export default function SettingsPage() {
   const tabs: { key: Tab; label: string }[] = [
     { key: 'account', label: 'Account' },
     { key: 'team', label: 'Team' },
+    { key: 'access', label: 'Access' },
     { key: 'planning', label: 'Planning Defaults' },
     { key: 'preferences', label: 'Preferences' },
   ];
@@ -149,6 +151,9 @@ export default function SettingsPage() {
       {/* Team tab */}
       {activeTab === 'team' && <TeamTab />}
 
+      {/* Access tab */}
+      {activeTab === 'access' && <AccessTab />}
+
       {/* Planning defaults tab */}
       {activeTab === 'planning' && (
         <div className="space-y-4">
@@ -204,7 +209,7 @@ export default function SettingsPage() {
       )}
 
       {/* Save */}
-      {activeTab !== 'team' && (
+      {activeTab !== 'team' && activeTab !== 'access' && (
       <div className="flex items-center gap-3 pt-4">
         <button
           onClick={handleSave}

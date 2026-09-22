@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { createClient } from '../../lib/supabase/client';
 import type { User } from '@supabase/supabase-js';
+import type { ModuleKey, ModuleStatus } from '../../lib/access/module-access';
 import {
   LayoutDashboard,
   ClipboardList,
@@ -20,26 +21,31 @@ import {
   ChevronRight,
 } from 'lucide-react';
 
-const NAV_ITEMS = [
+const NAV_ITEMS: { href: string; label: string; icon: typeof LayoutDashboard; module?: ModuleKey }[] = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/sessions', label: 'Sessions', icon: ClipboardList },
-  { href: '/drills', label: 'Drill Library', icon: Library },
-  { href: '/templates', label: 'Templates', icon: FileStack },
-  { href: '/teams', label: 'Teams', icon: Users },
-  { href: '/tactical-board', label: 'Tactical Board', icon: Target },
-  { href: '/calendar', label: 'Calendar', icon: Calendar },
+  { href: '/sessions', label: 'Sessions', icon: ClipboardList, module: 'sessions' },
+  { href: '/drills', label: 'Drill Library', icon: Library, module: 'drills' },
+  { href: '/templates', label: 'Templates', icon: FileStack, module: 'templates' },
+  { href: '/teams', label: 'Teams', icon: Users, module: 'teams' },
+  { href: '/tactical-board', label: 'Tactical Board', icon: Target, module: 'tactical_board' },
+  { href: '/calendar', label: 'Calendar', icon: Calendar, module: 'calendar' },
   { href: '/settings', label: 'Settings', icon: Settings },
 ];
 
 interface AppShellProps {
   user: User | null;
+  moduleAccess: Record<ModuleKey, ModuleStatus> | null;
   children: React.ReactNode;
 }
 
-export function AppShell({ user, children }: AppShellProps) {
+export function AppShell({ user, moduleAccess, children }: AppShellProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
+
+  const navItems = NAV_ITEMS.filter(
+    (item) => !item.module || !moduleAccess || moduleAccess[item.module] === 'granted'
+  );
 
   const handleSignOut = async () => {
     const supabase = createClient();
@@ -68,7 +74,7 @@ export function AppShell({ user, children }: AppShellProps) {
 
         {/* Navigation */}
         <nav className="flex-1 py-4 space-y-1 px-2 overflow-y-auto">
-          {NAV_ITEMS.map((item) => {
+          {navItems.map((item) => {
             const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
             return (
               <Link

@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
+import { hasModuleAccess, pathToModule } from '../access/module-access';
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
@@ -47,7 +48,7 @@ export async function updateSession(request: NextRequest) {
   if (user && !isCallbackRoute) {
     const { data: profile } = await supabase
       .from('profiles')
-      .select('organization_id')
+      .select('organization_id, role')
       .eq('id', user.id)
       .single();
 
@@ -61,6 +62,19 @@ export async function updateSession(request: NextRequest) {
       const url = request.nextUrl.clone();
       url.pathname = '/dashboard';
       return NextResponse.redirect(url);
+    }
+
+    if (profile?.organization_id) {
+      const moduleKey = pathToModule(pathname);
+      if (moduleKey) {
+        const allowed = await hasModuleAccess(supabase, user.id, profile.role, moduleKey);
+        if (!allowed) {
+          const url = request.nextUrl.clone();
+          url.pathname = '/dashboard';
+          url.searchParams.set('access_denied', moduleKey);
+          return NextResponse.redirect(url);
+        }
+      }
     }
   }
 
